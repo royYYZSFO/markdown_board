@@ -9,6 +9,8 @@ import os
 import re
 import sys
 import tempfile
+import unicodedata
+from datetime import date
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
@@ -166,7 +168,13 @@ def parse_owner_line(text):
 
 def parse_card_line(text):
     """Parse: **Title** [priority] @Owner #function >Pillar [[link]]"""
-    card = {"title": "", "priority": "medium", "owner": "", "fn": "", "pillar": "", "link": "", "note": ""}
+    card = {"title": "", "priority": "medium", "owner": "", "fn": "", "pillar": "", "link": "", "note": "", "due": ""}
+
+    # Extract !YYYY-MM-DD due date
+    m = re.search(r"!(\d{4}-\d{2}-\d{2})", text)
+    if m:
+        card["due"] = m.group(1)
+        text = text[: m.start()] + text[m.end() :]
 
     # Extract [[link]]
     m = re.search(r"\[\[(.+?)\]\]", text)
@@ -261,6 +269,9 @@ def serialize_card(card):
     if card.get("pillar"):
         parts.append(f">{card['pillar']}")
 
+    if card.get("due"):
+        parts.append(f"!{card['due']}")
+
     if card.get("link"):
         link = card["link"]
         if not link.startswith("[["):
@@ -336,6 +347,135 @@ def create_default_board():
     }
     write_board(data)
     return data
+
+
+# ─── Brief Creation ───────────────────────────────────────────
+
+
+def slugify(text):
+    """Convert title to a filename-safe slug."""
+    text = unicodedata.normalize("NFKD", text)
+    text = text.encode("ascii", "ignore").decode("ascii")
+    text = re.sub(r"[^\w\s-]", "", text.lower())
+    text = re.sub(r"[\s_]+", "-", text).strip("-")
+    return text[:60]
+
+
+def next_brief_number():
+    """Count existing brief_*.md files and return next number."""
+    vault, _ = load_config()
+    briefs_dir = vault / "Meticulous" / "Briefs"
+    if not briefs_dir.exists():
+        return 1
+    existing = sorted(briefs_dir.glob("brief_*.md"))
+    if not existing:
+        return 1
+    # Extract highest number from existing files
+    highest = 0
+    for f in existing:
+        m = re.match(r"brief_(\d+)", f.stem)
+        if m:
+            highest = max(highest, int(m.group(1)))
+    return highest + 1
+
+
+def render_brief_template(card_data):
+    """Render the brief markdown template with card metadata."""
+    title = card_data.get("title", "Untitled")
+    owner = card_data.get("owner", "")
+    fn = card_data.get("fn", "")
+    priority = card_data.get("priority", "medium")
+    due = card_data.get("due", "")
+    note = card_data.get("note", "")
+    today = date.today().isoformat()
+
+    # Look up function label from key
+    fn_labels = {
+        "finops": "Financial & Ops Plan", "marketing": "Marketing",
+        "operations": "Operations", "product": "Product",
+        "supplychain": "Supply Chain", "manufacturing": "Manufacturing",
+        "quality": "Quality", "fulfillment": "Fulfillment / Shipping",
+        "website": "Website", "software": "Software",
+        "support": "Customer Support", "roast": "Roast / Cafe Partners",
+        "ip": "IP", "accounting": "Accounting & Taxes", "legal": "Legal",
+    }
+    fn_display = fn_labels.get(fn, fn.capitalize() if fn else "")
+
+    lines = [
+        f"# {title}",
+        "",
+        "## Objective",
+        "_What needs to happen and why._",
+        "",
+        "## Context",
+    ]
+    if owner:
+        lines.append(f"- **Owner:** {owner}")
+    if fn_display:
+        lines.append(f"- **Function:** {fn_display}")
+    lines.append(f"- **Priority:** {priority.capitalize()}")
+    if due:
+        lines.append(f"- **Due:** {due}")
+    lines.append(f"- **Created:** {today}")
+    lines += [
+        "",
+        "## Current Situation",
+        "_What is the current state? What has already been tried or decided?_",
+        "",
+        "## Actions Required",
+        "- [ ] ",
+        "- [ ] ",
+        "- [ ] ",
+        "",
+        "## Deliverables",
+        "_List what needs to be produced (email draft, document, ticket, etc.):_",
+        "- ",
+        "",
+        "## Done When",
+        "- ",
+        "",
+        "## Notes",
+    ]
+    if note:
+        lines.append(note)
+    else:
+        lines.append("")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def write_brief(card_data):
+    """Create a brief file and return the wiki link path."""
+    vault, _ = load_config()
+    briefs_dir = vault / "Meticulous" / "Briefs"
+    briefs_dir.mkdir(parents=True, exist_ok=True)
+
+    num = next_brief_number()
+    slug = slugify(card_data.get("title", "untitled"))
+    filename = f"brief_{num:02d}_{slug}.md"
+    filepath = briefs_dir / filename
+
+    content = render_brief_template(card_data)
+
+    # Atomic write
+    fd, tmp = tempfile.mkstemp(dir=str(briefs_dir), suffix=".tmp")
+    closed = False
+    try:
+        os.write(fd, content.encode("utf-8"))
+        os.close(fd)
+        closed = True
+        os.replace(tmp, str(filepath))
+    except Exception:
+        if not closed:
+            try: os.close(fd)
+            except OSError: pass
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
+
+    # Return wiki link without .md extension
+    wiki_path = f"Meticulous/Briefs/{filepath.stem}"
+    return f"[[{wiki_path}]]"
 
 
 # ─── HTTP Handler ──────────────────────────────────────────────
@@ -415,7 +555,19 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length)
 
-        if parsed.path == "/config":
+        if parsed.path == "/api/brief":
+            try:
+                data = json.loads(body)
+            except Exception:
+                self.send_json({"error": "Invalid JSON"}, 400)
+                return
+            try:
+                link = write_brief(data)
+                self.send_json({"ok": True, "link": link})
+            except Exception as e:
+                self.send_json({"error": str(e)}, 500)
+
+        elif parsed.path == "/config":
             try:
                 data = json.loads(body)
             except Exception:

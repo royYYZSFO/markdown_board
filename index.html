@@ -399,6 +399,14 @@
   .pri-medium { background:#E65100; }
   .pri-low { background:var(--soft-gray); }
 
+  .card-due {
+    font-size:9px; font-weight:600; letter-spacing:0.04em;
+    color:var(--mid); display:flex; align-items:center; gap:3px;
+  }
+  .card-due.due-overdue { color:#C62828; }
+  .card-due.due-soon { color:#E65100; }
+  .card-due.due-ok { color:var(--mid); }
+
   .empty-col {
     text-align:center; padding:24px 10px;
     font-size:9px; font-weight:700; letter-spacing:0.12em;
@@ -464,6 +472,14 @@
     font-family:'Noto Sans',sans-serif;
   }
   .delete-link:hover { color:var(--red); }
+  .btn-brief {
+    font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--mid); cursor:pointer; border:1px solid var(--divider); background:none;
+    font-family:'Noto Sans',sans-serif; padding:6px 12px;
+    border-radius:var(--border-radius); transition:all 0.15s;
+  }
+  .btn-brief:hover { border-color:var(--black); color:var(--black); }
+  .btn-brief:disabled { opacity:0.5; cursor:default; }
   .two-col { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 
   /* emoji + color pickers */
@@ -562,24 +578,7 @@
     <div class="form-row"><label>Note / Context</label><textarea id="c-note" placeholder="Blockers, context, next action…"></textarea></div>
     <div class="two-col">
       <div class="form-row"><label>Function</label>
-        <select id="c-fn">
-          <option value="">— None —</option>
-          <option value="finops">Financial & Ops Plan</option>
-          <option value="marketing">Marketing</option>
-          <option value="operations">Operations</option>
-          <option value="product">Product</option>
-          <option value="supplychain">Supply Chain</option>
-          <option value="manufacturing">Manufacturing</option>
-          <option value="quality">Quality</option>
-          <option value="fulfillment">Fulfillment / Shipping</option>
-          <option value="website">Website</option>
-          <option value="software">Software</option>
-          <option value="support">Customer Support</option>
-          <option value="roast">Roast / Café Partners</option>
-          <option value="ip">IP</option>
-          <option value="accounting">Accounting & Taxes</option>
-          <option value="legal">Legal</option>
-        </select>
+        <select id="c-fn"><option value="">— None —</option></select>
       </div>
       <div class="form-row"><label>Owner</label>
         <select id="c-owner"><option value="">— Unassigned —</option></select>
@@ -606,10 +605,12 @@
       <div class="form-row"><label>Pillar</label>
         <select id="c-pillar"><option value="">— Untagged —</option></select>
       </div>
-      <div class="form-row"><label>Obsidian Link</label><input id="c-link" type="text" placeholder="[[Meticulous/…]]"></div>
+      <div class="form-row"><label>Due Date</label><input id="c-due" type="date"></div>
     </div>
+    <div class="form-row"><label>Obsidian Link</label><input id="c-link" type="text" placeholder="[[Meticulous/…]]"></div>
     <div class="modal-actions">
       <button class="delete-link" id="card-delete-btn" style="display:none;margin-right:auto" onclick="deleteCard()">Delete Card</button>
+      <button class="btn-brief" id="card-brief-btn" style="display:none" onclick="createBrief()">Create Brief</button>
       <button class="btn-cancel" onclick="closeCardModal()">Cancel</button>
       <button class="btn-save" onclick="saveCard()">Save</button>
     </div>
@@ -716,6 +717,7 @@ const PRI_COLS = [
 ];
 let editingCardId=null, editingPillarId=null;
 let selectedEmoji='🎯', selectedColor=PILLAR_COLORS[0];
+let vaultName = '';
 
 // ─────────────────────────────────────────
 // PILLARS
@@ -854,7 +856,21 @@ function cardHTML(c) {
   const stripe = pillar ? `<span class="card-pillar-stripe" style="background:${pillar.color}" title="${pillar.name}"></span>` : '';
   const o = owners.find(x=>x.id===c.ownerId);
   const av = o ? `<span class="card-owner-av" style="background:${o.color};width:20px;height:20px;font-size:8px" title="${o.name}">${o.initials}</span>` : '';
-  const link = c.link ? `<a class="card-link" href="#">${c.link}</a>` : '<span></span>';
+  let linkHtml = '<span></span>';
+  if (c.link) {
+    const inner = c.link.replace(/^\[\[|\]\]$/g, '');
+    const href = vaultName ? `obsidian://open?vault=${encodeURIComponent(vaultName)}&file=${encodeURIComponent(inner)}` : '#';
+    linkHtml = `<a class="card-link" href="${href}" onclick="event.stopPropagation()">${c.link}</a>`;
+  }
+  let dueHtml = '';
+  if (c.due) {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dueDate = new Date(c.due + 'T00:00:00');
+    const diffDays = Math.round((dueDate - today) / 86400000);
+    const cls = diffDays < 0 ? 'due-overdue' : diffDays <= 3 ? 'due-soon' : 'due-ok';
+    const label = diffDays < 0 ? `${-diffDays}d overdue` : diffDays === 0 ? 'Today' : diffDays === 1 ? 'Tomorrow' : `${diffDays}d`;
+    dueHtml = `<span class="card-due ${cls}" title="${c.due}">${label}</span>`;
+  }
   return `<div class="card" id="card-${c.id}" draggable="true"
     ondragstart="onDragStart(event,${c.id})" ondragend="onDragEnd()" ondblclick="openCardModal(${c.id})">
     <div class="card-top">
@@ -862,7 +878,7 @@ function cardHTML(c) {
     </div>
     <div class="card-title">${c.title}</div>
     ${c.note?`<div class="card-note">${c.note}</div>`:''}
-    <div class="card-footer">${link}<div class="card-pri pri-${c.priority}" title="${c.priority}"></div></div>
+    <div class="card-footer">${linkHtml}${dueHtml}<div class="card-pri pri-${c.priority}" title="${c.priority}"></div></div>
   </div>`;
 }
 
@@ -986,6 +1002,7 @@ function onFnRowDrop(e,targetKey){
 // ─────────────────────────────────────────
 // CARD MODAL
 // ─────────────────────────────────────────
+function populateFnSelect(sel){document.getElementById('c-fn').innerHTML='<option value="">— None —</option>'+fnOrder.map(k=>{const fn=FUNCTIONS[k];if(!fn)return'';return`<option value="${k}" ${k===sel?'selected':''}>${fn.label}</option>`;}).join('');}
 function populatePillarSelect(sel){document.getElementById('c-pillar').innerHTML='<option value="">— Untagged —</option>'+pillars.map(p=>`<option value="${p.id}" ${p.id===sel?'selected':''}>${p.icon} ${p.name}</option>`).join('');}
 function populateOwnerSelect(sel){document.getElementById('c-owner').innerHTML='<option value="">— Unassigned —</option>'+owners.map(o=>`<option value="${o.id}" ${o.id===sel?'selected':''}>${o.name}</option>`).join('');}
 function openCardModal(id){
@@ -994,11 +1011,16 @@ function openCardModal(id){
   document.getElementById('card-modal-h').textContent=c?'Edit Card':'Add Card';
   document.getElementById('c-title').value=c?c.title:'';
   document.getElementById('c-note').value=c?c.note:'';
-  document.getElementById('c-fn').value=c?c.fn:(activeFn!=='all'?activeFn:'operations');
+  populateFnSelect(c?c.fn:(activeFn!=='all'?activeFn:'operations'));
   document.getElementById('c-col').value=c?c.col:'now';
   document.getElementById('c-priority').value=c?c.priority:'medium';
   document.getElementById('c-link').value=c?c.link:'';
+  document.getElementById('c-due').value=c?c.due:'';
   document.getElementById('card-delete-btn').style.display=c?'block':'none';
+  const briefBtn=document.getElementById('card-brief-btn');
+  briefBtn.style.display=c?'inline-block':'none';
+  briefBtn.textContent='Create Brief';
+  briefBtn.disabled=false;
   populatePillarSelect(c?c.pillarId:(activePillar!=='all'?activePillar:''));
   populateOwnerSelect(c?c.ownerId:'');
   document.getElementById('card-modal').classList.add('open');
@@ -1011,7 +1033,7 @@ function saveCard(){
   const data={title,note:document.getElementById('c-note').value.trim(),fn:document.getElementById('c-fn').value,
     ownerId:document.getElementById('c-owner').value,col:document.getElementById('c-col').value,
     priority:document.getElementById('c-priority').value,link:document.getElementById('c-link').value.trim(),
-    pillarId:document.getElementById('c-pillar').value};
+    pillarId:document.getElementById('c-pillar').value,due:document.getElementById('c-due').value};
   if(editingCardId) Object.assign(cards.find(c=>c.id===editingCardId),data);
   else cards.push({id:++nextCardId,...data});
   closeCardModal();renderAll();scheduleSave();
@@ -1020,6 +1042,36 @@ function deleteCard(){
   if(!editingCardId)return;
   cards=cards.filter(c=>c.id!==editingCardId);
   closeCardModal();renderAll();scheduleSave();
+}
+async function createBrief(){
+  if(!editingCardId)return;
+  const btn=document.getElementById('card-brief-btn');
+  btn.textContent='Creating…';btn.disabled=true;
+  const c=cards.find(x=>x.id===editingCardId);
+  if(!c){btn.textContent='Create Brief';btn.disabled=false;return;}
+  const ownerObj=owners.find(o=>o.id===c.ownerId);
+  const payload={
+    title:document.getElementById('c-title').value.trim()||c.title,
+    owner:ownerObj?ownerObj.name:'',
+    fn:document.getElementById('c-fn').value||c.fn,
+    priority:document.getElementById('c-priority').value||c.priority,
+    due:document.getElementById('c-due').value||c.due,
+    note:document.getElementById('c-note').value.trim()||c.note
+  };
+  try{
+    const r=await fetch('/api/brief',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const result=await r.json();
+    if(result.ok&&result.link){
+      document.getElementById('c-link').value=result.link;
+      btn.textContent='Brief Created';
+      saveCard();
+    }else{
+      btn.textContent='Failed';setTimeout(()=>{btn.textContent='Create Brief';btn.disabled=false;},2000);
+    }
+  }catch(e){
+    console.warn('Brief creation failed:',e);
+    btn.textContent='Failed';setTimeout(()=>{btn.textContent='Create Brief';btn.disabled=false;},2000);
+  }
 }
 
 // ─────────────────────────────────────────
@@ -1112,7 +1164,8 @@ function buildBoardData() {
       title: c.title, priority: c.priority,
       owner: ownerMap[c.ownerId] || '', fn: c.fn || '',
       pillar: pillarMap[c.pillarId] || '',
-      link: c.link || '', note: c.note || ''
+      link: c.link || '', note: c.note || '',
+      due: c.due || ''
     }));
   });
   return { pillars: boardPillars, owners: boardOwners, columns };
@@ -1165,7 +1218,8 @@ function applyBoardData(board, mtime) {
         id: ++cardId, title: c.title || '', note: c.note || '',
         fn: c.fn || '', ownerId: ownerByName[c.owner] || '',
         col, priority: c.priority || 'medium',
-        link: c.link || '', pillarId: pillarByName[c.pillar] || ''
+        link: c.link || '', pillarId: pillarByName[c.pillar] || '',
+        due: c.due || ''
       });
     });
   });
@@ -1270,7 +1324,8 @@ async function migrateFromLocalStorage() {
         title: c.title, priority: c.priority || 'medium',
         owner: (ownerMap[c.ownerId] || {}).name || '',
         fn: c.fn || '', pillar: (pillarMap[c.pillarId] || {}).name || '',
-        link: c.link || '', note: c.note || ''
+        link: c.link || '', note: c.note || '',
+        due: c.due || ''
       });
     });
     const boardData = { pillars: boardPillars, owners: boardOwners, columns };
@@ -1295,6 +1350,11 @@ document.getElementById('today-date').textContent =
   new Date().toLocaleDateString('en-CH',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 
 (async function init() {
+  // Fetch vault name for Obsidian links
+  try {
+    const cfg = await fetch('/config').then(r=>r.json());
+    if (cfg.vault) { const parts = cfg.vault.replace(/\/+$/,'').split('/'); vaultName = parts[parts.length-1]; }
+  } catch(e) {}
   // Try to migrate old localStorage data first
   const migrated = await migrateFromLocalStorage();
   // Load board from server
