@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meticulous — Priority Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --beige: #EDEDEB;
+    --soft-gray: #D9D9D9;
+    --red: #F0380F;
+    --black: #1F1F1F;
+    --white: #FFFFFF;
+    --mid: #8A8A88;
+    --divider: #D0D0CE;
+    --border-radius: 0px;
+  }
+
+  * { box-sizing:border-box; margin:0; padding:0; }
+
+  body {
+    background:var(--beige);
+    font-family:'Noto Sans',sans-serif;
+    color:var(--black);
+    height:100vh;
+    overflow:hidden;
+    line-height:1.6;
+  }
+
+  /* ── SCROLLBARS ── */
+  ::-webkit-scrollbar { width:3px; height:3px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--soft-gray); }
+
+  /* ── TYPOGRAPHY ── */
+  h1,h2,h3,h4 {
+    font-family:'Noto Sans',sans-serif;
+    font-weight:700;
+    letter-spacing:-0.02em;
+  }
+
+  /* ── HEADER ── */
+  header {
+    height:52px;
+    padding:0 24px;
+    display:flex;
+    align-items:center;
+    gap:0;
+    border-bottom:1px solid var(--black);
+    flex-shrink:0;
+    background:var(--black);
+  }
+
+  .hdr-brand {
+    display:flex;
+    align-items:center;
+    gap:0;
+  }
+
+  .hdr-isotype {
+    background:var(--red);
+    color:var(--white);
+    width:52px;
+    height:52px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    font-size:13px;
+    letter-spacing:0.05em;
+    flex-shrink:0;
+    margin-left:-24px;
+  }
+
+  .hdr-wordmark {
+    font-family:'Noto Sans',sans-serif;
+    font-size:13px;
+    font-weight:700;
+    color:var(--white);
+    letter-spacing:0.12em;
+    text-transform:uppercase;
+    padding-left:16px;
+  }
+
+  .hdr-subtitle {
+    font-size:11px;
+    font-weight:400;
+    color:rgba(255,255,255,0.35);
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    padding-left:20px;
+    border-left:1px solid rgba(255,255,255,0.15);
+    margin-left:16px;
+  }
+
+  .hdr-right {
+    margin-left:auto;
+    display:flex;
+    align-items:center;
+    gap:0;
+  }
+
+  .today {
+    font-size:10px;
+    font-weight:400;
+    color:rgba(255,255,255,0.3);
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    margin-right:16px;
+  }
+
+  .btn {
+    border:none;
+    padding:0 16px;
+    height:32px;
+    font-family:'Noto Sans',sans-serif;
+    font-size:10px;
+    font-weight:600;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    cursor:pointer;
+    transition:all 0.15s;
+    border-radius:var(--border-radius);
+  }
+  .btn-primary {
+    background:var(--red);
+    color:var(--white);
+  }
+  .btn-primary:hover { opacity:0.85; }
+  .btn-secondary {
+    background:rgba(255,255,255,0.08);
+    color:rgba(255,255,255,0.6);
+    border:1px solid rgba(255,255,255,0.15);
+    margin-right:6px;
+  }
+  .btn-secondary:hover { background:rgba(255,255,255,0.14); color:var(--white); }
+
+  /* ── LAYOUT ── */
+  .app { display:flex; height:calc(100vh - 52px); }
+
+  /* ── PANE BASE ── */
+  .pane {
+    display:flex;
+    flex-direction:column;
+    flex-shrink:0;
+    border-right:1px solid var(--divider);
+    overflow:hidden;
+  }
+  .pane-header {
+    padding:0 16px;
+    height:40px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border-bottom:1px solid var(--divider);
+    flex-shrink:0;
+    background:var(--white);
+  }
+  .pane-title {
+    font-size:9px;
+    font-weight:700;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--mid);
+  }
+  .pane-body { flex:1; overflow-y:auto; overflow-x:hidden; }
+
+  /* ── PILLARS PANE ── */
+  #pane-pillars { width:220px; background:var(--beige); }
+  #pane-pillars .pane-body { padding:8px; display:flex; flex-direction:column; gap:2px; }
+
+  .pillar-row {
+    padding:10px 12px;
+    cursor:pointer;
+    transition:background 0.1s;
+    border:1px solid transparent;
+    position:relative;
+    border-radius:var(--border-radius);
+  }
+  .pillar-row:hover { background:var(--white); }
+  .pillar-row.sel {
+    background:var(--black) !important;
+    border-color:var(--black);
+  }
+  .pillar-row.sel .pr-name { color:var(--white); }
+  .pillar-row.sel .pr-desc { color:rgba(255,255,255,0.5); }
+  .pillar-row.sel .pr-count { color:var(--white); }
+  .pillar-row.sel .pr-bar { background:rgba(255,255,255,0.15); }
+  .pillar-row.sel .pr-bar-fill { background:var(--red); }
+
+  .pr-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:3px; }
+  .pr-icon { font-size:13px; line-height:1; }
+  .pr-count { font-size:18px; font-weight:700; line-height:1; color:var(--black); letter-spacing:-0.02em; }
+  .pr-name { font-size:11px; font-weight:700; line-height:1.3; color:var(--black); text-transform:uppercase; letter-spacing:0.04em; }
+  .pr-desc { font-size:10px; font-weight:400; color:var(--mid); line-height:1.45; margin-top:3px; }
+  .pr-bar { margin-top:8px; height:2px; background:var(--soft-gray); overflow:hidden; }
+  .pr-bar-fill { height:100%; background:var(--black); transition:width 0.3s; }
+  .pr-edit {
+    position:absolute; top:8px; right:8px;
+    background:none; border:1px solid var(--divider);
+    color:var(--mid); font-size:9px; cursor:pointer;
+    padding:2px 6px; opacity:0; transition:opacity 0.12s;
+    font-family:'Noto Sans',sans-serif; font-weight:600;
+    letter-spacing:0.05em; text-transform:uppercase;
+    border-radius:var(--border-radius);
+  }
+  .pillar-row:hover .pr-edit { opacity:1; }
+  .pillar-row.sel .pr-edit { border-color:rgba(255,255,255,0.2); color:rgba(255,255,255,0.5); }
+  .pr-edit:hover { background:var(--soft-gray); }
+  .pillar-row.sel .pr-edit:hover { background:rgba(255,255,255,0.1); color:var(--white); }
+
+  /* ── FUNCTIONS PANE ── */
+  #pane-functions { width:186px; background:var(--beige); }
+  #pane-functions .pane-body { padding:0; }
+
+  .fn-row {
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:9px 16px;
+    cursor:pointer;
+    border-left:2px solid transparent;
+    border-bottom:1px solid var(--divider);
+    transition:all 0.1s;
+    position:relative;
+  }
+  .fn-row:last-child { border-bottom:none; }
+  .fn-row:hover { background:var(--white); }
+  .fn-row.sel { background:var(--white); border-left-color:var(--red); }
+  .fn-dot { width:6px; height:6px; flex-shrink:0; border-radius:var(--border-radius); }
+  .fn-label { font-size:11px; font-weight:500; color:var(--mid); flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .fn-row.sel .fn-label { color:var(--black); font-weight:600; }
+  .fn-row:hover .fn-label { color:var(--black); }
+  .fn-badge {
+    font-size:9px; font-weight:700;
+    padding:1px 5px;
+    background:var(--soft-gray);
+    color:var(--mid);
+    flex-shrink:0;
+    border-radius:var(--border-radius);
+    letter-spacing:0.04em;
+  }
+  .fn-row.sel .fn-badge { background:var(--red); color:var(--white); }
+
+  /* responsibilities tooltip */
+  .fn-tooltip {
+    display:none; position:absolute; left:calc(100% + 1px); top:-1px; z-index:100;
+    width:260px;
+    background:var(--black);
+    border:1px solid var(--black);
+    padding:14px 16px;
+    box-shadow:4px 4px 0px rgba(0,0,0,0.15);
+    pointer-events:none;
+  }
+  .fn-row:hover .fn-tooltip { display:block; }
+  .fn-tooltip-title {
+    font-size:9px; font-weight:700; letter-spacing:0.14em;
+    text-transform:uppercase; color:var(--red); margin-bottom:10px;
+  }
+  .fn-tooltip ul { list-style:none; display:flex; flex-direction:column; gap:5px; }
+  .fn-tooltip li {
+    font-size:11px; color:rgba(255,255,255,0.6); line-height:1.5;
+    padding-left:12px; position:relative;
+  }
+  .fn-tooltip li::before { content:'—'; position:absolute; left:0; color:var(--red); font-size:9px; top:2px; }
+
+  /* ── KANBAN AREA ── */
+  .kanban-area { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
+
+  /* active filter bar */
+  .active-filter-bar {
+    padding:0 16px; height:36px;
+    display:flex; align-items:center; gap:8px;
+    border-bottom:1px solid var(--divider);
+    flex-shrink:0; background:var(--white);
+  }
+  .active-filter-label {
+    font-size:9px; font-weight:700; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--mid);
+  }
+  .active-filter-chip {
+    display:flex; align-items:center; gap:5px;
+    font-size:10px; font-weight:600; padding:2px 8px;
+    border:1px solid var(--black); cursor:pointer;
+    transition:all 0.1s; background:var(--black); color:var(--white);
+    text-transform:uppercase; letter-spacing:0.06em;
+    border-radius:var(--border-radius);
+  }
+  .active-filter-chip:hover { background:var(--red); border-color:var(--red); }
+  .chip-clear { font-size:12px; opacity:0.7; margin-left:1px; }
+  .clear-all-btn {
+    margin-left:auto; background:none; border:none;
+    font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+    color:var(--mid); cursor:pointer; font-family:'Noto Sans',sans-serif;
+  }
+  .clear-all-btn:hover { color:var(--red); }
+
+  /* sub-filter bar */
+  .sub-filter-bar {
+    padding:0 16px; height:36px;
+    display:flex; gap:0; align-items:center;
+    border-bottom:1px solid var(--divider);
+    flex-shrink:0; background:var(--beige);
+  }
+  .filter-label {
+    font-size:9px; font-weight:700; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--mid); margin-right:8px;
+  }
+  .filter-sep { width:1px; height:20px; background:var(--divider); margin:0 10px; }
+  .pill {
+    padding:0 10px; height:22px; line-height:22px;
+    font-family:'Noto Sans',sans-serif; font-size:9px; font-weight:600;
+    letter-spacing:0.08em; text-transform:uppercase;
+    cursor:pointer; border:1px solid transparent;
+    color:var(--mid); background:none;
+    transition:all 0.1s; border-radius:var(--border-radius);
+    margin-right:2px;
+  }
+  .pill:hover { background:var(--white); color:var(--black); border-color:var(--divider); }
+  .pill.active { background:var(--black); color:var(--white); border-color:var(--black); }
+
+  /* ── BOARD ── */
+  .board { display:grid; grid-template-columns:repeat(4,1fr); flex:1; overflow:hidden; }
+  .column { display:flex; flex-direction:column; border-right:1px solid var(--divider); overflow:hidden; }
+  .column:last-child { border-right:none; }
+
+  .col-header {
+    padding:0 14px; height:40px;
+    display:flex; align-items:center; gap:8px;
+    border-bottom:1px solid var(--divider);
+    flex-shrink:0; background:var(--white);
+  }
+  .kdot { width:6px; height:6px; flex-shrink:0; border-radius:var(--border-radius); }
+  .col-header h2 {
+    font-size:9px; font-weight:700; letter-spacing:0.14em;
+    text-transform:uppercase; color:var(--mid);
+  }
+  .col-count {
+    margin-left:auto; font-size:9px; font-weight:700;
+    color:var(--mid); background:var(--soft-gray);
+    padding:1px 6px; letter-spacing:0.04em;
+    border-radius:var(--border-radius);
+  }
+
+  .col-now .kdot   { background:#2E7D32; }
+  .col-next .kdot  { background:#1565C0; }
+  .col-waiting .kdot { background:#E65100; }
+  .col-done .kdot  { background:var(--soft-gray); }
+  .col-now .col-header { border-top:2px solid #2E7D32; }
+  .col-next .col-header { border-top:2px solid #1565C0; }
+  .col-waiting .col-header { border-top:2px solid #E65100; }
+  .col-done .col-header { border-top:2px solid var(--soft-gray); }
+
+  .cards-container {
+    flex:1; overflow-y:auto;
+    padding:8px; display:flex; flex-direction:column; gap:6px;
+    background:var(--beige);
+  }
+  .cards-container.drag-over { background:#E8E8E6; }
+  .drop-indicator { height:2px; background:var(--red); margin:2px 0; flex-shrink:0; }
+
+  /* ── KANBAN CARD ── */
+  .card {
+    background:var(--white);
+    padding:10px 12px;
+    cursor:grab;
+    transition:box-shadow 0.12s, opacity 0.15s;
+    border:1px solid var(--divider);
+    user-select:none;
+    border-radius:var(--border-radius);
+  }
+  .card:hover { box-shadow:3px 3px 0 var(--black); border-color:var(--black); }
+  .card.dragging { opacity:0.25; cursor:grabbing; }
+
+  .card-top { display:flex; align-items:center; gap:4px; margin-bottom:6px; flex-wrap:wrap; }
+  .card-fn-badge {
+    font-size:8px; font-weight:700; letter-spacing:0.08em;
+    text-transform:uppercase; padding:2px 5px;
+    border-radius:var(--border-radius);
+  }
+  .card-pillar-stripe {
+    width:4px; height:14px; flex-shrink:0; margin-left:2px;
+    border-radius:var(--border-radius);
+  }
+  .card-owner-av {
+    margin-left:auto; width:20px; height:20px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:8px; font-weight:700; color:white;
+    border-radius:var(--border-radius);
+  }
+  .card-title { font-size:12px; font-weight:600; color:var(--black); line-height:1.4; margin-bottom:3px; }
+  .card-note { font-size:10.5px; font-weight:400; color:var(--mid); line-height:1.45; white-space:pre-line; }
+  .card-footer {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-top:8px; padding-top:6px; border-top:1px solid var(--divider);
+  }
+  .card-link { font-size:9px; font-weight:600; color:var(--black); text-decoration:none; letter-spacing:0.04em; }
+  .card-link:hover { color:var(--red); }
+  .card-pri { width:8px; height:8px; flex-shrink:0; border-radius:var(--border-radius); }
+  .pri-high { background:var(--red); }
+  .pri-medium { background:#E65100; }
+  .pri-low { background:var(--soft-gray); }
+
+  .empty-col {
+    text-align:center; padding:24px 10px;
+    font-size:9px; font-weight:700; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--soft-gray);
+  }
+
+  /* ── FUNCTION COLOR MAP ── */
+  .fn-finops       { background:#F5F0DC; color:#5C4A00; } .dot-finops       { background:#B8A050; }
+  .fn-marketing    { background:#FFE8EC; color:#7A1535; } .dot-marketing    { background:var(--red); }
+  .fn-operations   { background:#E8EEF8; color:#1A3352; } .dot-operations   { background:#1565C0; }
+  .fn-product      { background:#E8F4E8; color:#1B4A1E; } .dot-product      { background:#2E7D32; }
+  .fn-supplychain  { background:#FFF0E8; color:#6B2A00; } .dot-supplychain  { background:#E65100; }
+  .fn-manufacturing{ background:#EEE8F8; color:#2E1A52; } .dot-manufacturing{ background:#6A1B9A; }
+  .fn-quality      { background:#F8F4E4; color:#4A3800; } .dot-quality      { background:#F9A825; }
+  .fn-fulfillment  { background:#E4F8F4; color:#004A3A; } .dot-fulfillment  { background:#00695C; }
+  .fn-website      { background:#F0F8E4; color:#3A4A00; } .dot-website      { background:#558B2F; }
+  .fn-software     { background:#E4F8F8; color:#004A4A; } .dot-software     { background:#00838F; }
+  .fn-support      { background:#FFF0E8; color:#4A2000; } .dot-support      { background:#BF360C; }
+  .fn-roast        { background:#F0E8F8; color:#2A004A; } .dot-roast        { background:#6A1B9A; }
+  .fn-ip           { background:#EEE8F8; color:#3D1A5C; } .dot-ip           { background:#9C27B0; }
+  .fn-accounting   { background:#E8F8E8; color:#004A00; } .dot-accounting   { background:#2E7D32; }
+  .fn-legal        { background:#F8E8E8; color:#4A0000; } .dot-legal        { background:#C62828; }
+
+  /* ── MODALS ── */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:200; align-items:center; justify-content:center; }
+  .modal-overlay.open { display:flex; }
+  .modal {
+    background:var(--white); padding:28px; width:480px; max-height:88vh;
+    overflow-y:auto; box-shadow:6px 6px 0 var(--black); border:1px solid var(--black);
+    border-radius:var(--border-radius);
+  }
+  .modal h3 { font-size:18px; font-weight:700; margin-bottom:20px; color:var(--black); letter-spacing:-0.02em; }
+  .form-row { margin-top:14px; }
+  .form-row label {
+    display:block; font-size:9px; font-weight:700; letter-spacing:0.12em;
+    text-transform:uppercase; color:var(--mid); margin-bottom:5px;
+  }
+  .modal input,.modal select,.modal textarea {
+    width:100%; padding:8px 10px; border:1px solid var(--divider);
+    font-family:'Noto Sans',sans-serif; font-size:13px; color:var(--black);
+    background:var(--beige); outline:none; border-radius:var(--border-radius);
+  }
+  .modal input:focus,.modal select:focus,.modal textarea:focus { border-color:var(--black); background:var(--white); }
+  .modal textarea { resize:vertical; min-height:60px; }
+  .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; padding-top:16px; border-top:1px solid var(--divider); }
+  .btn-cancel {
+    background:none; border:1px solid var(--divider); padding:8px 16px;
+    cursor:pointer; font-family:'Noto Sans',sans-serif; font-size:11px;
+    font-weight:600; letter-spacing:0.08em; text-transform:uppercase; color:var(--mid);
+    border-radius:var(--border-radius);
+  }
+  .btn-cancel:hover { border-color:var(--black); color:var(--black); }
+  .btn-save {
+    background:var(--black); color:var(--white); border:none;
+    padding:8px 18px; cursor:pointer; font-family:'Noto Sans',sans-serif;
+    font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+    transition:background 0.15s; border-radius:var(--border-radius);
+  }
+  .btn-save:hover { background:var(--red); }
+  .delete-link {
+    font-size:9px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase;
+    color:#C62828; cursor:pointer; border:none; background:none;
+    font-family:'Noto Sans',sans-serif;
+  }
+  .delete-link:hover { color:var(--red); }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+  /* emoji + color pickers */
+  .emoji-options { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+  .emoji-opt { font-size:18px; cursor:pointer; padding:4px 6px; border:1px solid var(--divider); transition:all 0.1s; border-radius:var(--border-radius); }
+  .emoji-opt:hover,.emoji-opt.selected { border-color:var(--black); background:var(--beige); }
+  .color-options { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .color-opt { width:22px; height:22px; cursor:pointer; border:2px solid transparent; transition:all 0.1s; border-radius:var(--border-radius); }
+  .color-opt:hover,.color-opt.selected { border-color:var(--black); transform:scale(1.1); }
+
+  /* owner modal list items */
+  .owner-item {
+    display:flex; align-items:center; gap:10px;
+    padding:8px 0; border-bottom:1px solid var(--divider);
+  }
+  .owner-av-lg {
+    width:28px; height:28px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px; font-weight:700; color:white;
+    border-radius:var(--border-radius); flex-shrink:0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="hdr-brand">
+    <div class="hdr-isotype">M</div>
+    <span class="hdr-wordmark">Meticulous</span>
+    <span class="hdr-subtitle">Priority Board</span>
+  </div>
+  <div class="hdr-right">
+    <span class="today" id="today-date"></span>
+    <span id="save-status" style="font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-right:12px;padding:3px 8px;color:rgba(255,255,255,0.35);cursor:default"></span>
+    <button class="btn btn-secondary" onclick="document.getElementById('settings-modal').classList.add('open');loadSettingsModal()">Settings</button>
+    <button class="btn btn-secondary" onclick="openCardModal()">+ Card</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('owner-modal').classList.add('open');renderOwnerModal()">Team</button>
+    <button class="btn btn-primary" onclick="openPillarModal()">+ Pillar</button>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ══ PANE 1: PILLARS ══ -->
+  <div class="pane" id="pane-pillars">
+    <div class="pane-header"><span class="pane-title">Pillars</span></div>
+    <div class="pane-body" id="pillar-list"></div>
+  </div>
+
+  <!-- ══ PANE 2: FUNCTIONS ══ -->
+  <div class="pane" id="pane-functions">
+    <div class="pane-header"><span class="pane-title">Functions</span></div>
+    <div class="pane-body" id="fn-list"></div>
+  </div>
+
+  <!-- ══ PANE 3: KANBAN ══ -->
+  <div class="kanban-area">
+
+    <div class="active-filter-bar" id="active-filter-bar" style="display:none">
+      <span class="active-filter-label">Viewing</span>
+      <span id="active-filter-chips" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+      <button class="clear-all-btn" onclick="clearAllFilters()">Clear all ×</button>
+    </div>
+
+    <div class="sub-filter-bar">
+      <span class="filter-label">Owner</span>
+      <button class="pill active" data-owner="all" onclick="filterOwner('all',this)">All</button>
+      <span id="owner-filter-pills" style="display:contents"></span>
+      <div class="filter-sep"></div>
+      <span class="filter-label">Priority</span>
+      <button class="pill active" data-pri="all" onclick="filterPri('all',this)">All</button>
+      <button class="pill" data-pri="high" onclick="filterPri('high',this)">High</button>
+      <button class="pill" data-pri="medium" onclick="filterPri('medium',this)">Mid</button>
+      <button class="pill" data-pri="low" onclick="filterPri('low',this)">Low</button>
+    </div>
+
+    <div class="board">
+      <div class="column col-now">
+        <div class="col-header"><div class="kdot"></div><h2>Now</h2><span class="col-count" id="count-now">0</span></div>
+        <div class="cards-container" id="col-now" ondragover="onDragOver(event)" ondrop="onDrop(event,'now')" ondragleave="onDragLeave(event)"></div>
+      </div>
+      <div class="column col-next">
+        <div class="col-header"><div class="kdot"></div><h2>Next Up</h2><span class="col-count" id="count-next">0</span></div>
+        <div class="cards-container" id="col-next" ondragover="onDragOver(event)" ondrop="onDrop(event,'next')" ondragleave="onDragLeave(event)"></div>
+      </div>
+      <div class="column col-waiting">
+        <div class="col-header"><div class="kdot"></div><h2>Waiting</h2><span class="col-count" id="count-waiting">0</span></div>
+        <div class="cards-container" id="col-waiting" ondragover="onDragOver(event)" ondrop="onDrop(event,'waiting')" ondragleave="onDragLeave(event)"></div>
+      </div>
+      <div class="column col-done">
+        <div class="col-header"><div class="kdot"></div><h2>Done</h2><span class="col-count" id="count-done">0</span></div>
+        <div class="cards-container" id="col-done" ondragover="onDragOver(event)" ondrop="onDrop(event,'done')" ondragleave="onDragLeave(event)"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ CARD MODAL ════ -->
+<div class="modal-overlay" id="card-modal" onclick="closeOutside(event,'card-modal')">
+  <div class="modal">
+    <h3 id="card-modal-h">Add Card</h3>
+    <div class="form-row"><label>Title</label><input id="c-title" type="text" placeholder="What needs to happen?"></div>
+    <div class="form-row"><label>Note / Context</label><textarea id="c-note" placeholder="Blockers, context, next action…"></textarea></div>
+    <div class="two-col">
+      <div class="form-row"><label>Function</label>
+        <select id="c-fn">
+          <option value="">— None —</option>
+          <option value="finops">Financial & Ops Plan</option>
+          <option value="marketing">Marketing</option>
+          <option value="operations">Operations</option>
+          <option value="product">Product</option>
+          <option value="supplychain">Supply Chain</option>
+          <option value="manufacturing">Manufacturing</option>
+          <option value="quality">Quality</option>
+          <option value="fulfillment">Fulfillment / Shipping</option>
+          <option value="website">Website</option>
+          <option value="software">Software</option>
+          <option value="support">Customer Support</option>
+          <option value="roast">Roast / Café Partners</option>
+          <option value="ip">IP</option>
+          <option value="accounting">Accounting & Taxes</option>
+          <option value="legal">Legal</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Owner</label>
+        <select id="c-owner"><option value="">— Unassigned —</option></select>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="form-row"><label>Column</label>
+        <select id="c-col">
+          <option value="now">Now</option>
+          <option value="next">Next Up</option>
+          <option value="waiting">Waiting</option>
+          <option value="done">Done</option>
+        </select>
+      </div>
+      <div class="form-row"><label>Priority</label>
+        <select id="c-priority">
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+    </div>
+    <div class="two-col">
+      <div class="form-row"><label>Pillar</label>
+        <select id="c-pillar"><option value="">— Untagged —</option></select>
+      </div>
+      <div class="form-row"><label>Obsidian Link</label><input id="c-link" type="text" placeholder="[[Meticulous/…]]"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="delete-link" id="card-delete-btn" style="display:none;margin-right:auto" onclick="deleteCard()">Delete Card</button>
+      <button class="btn-cancel" onclick="closeCardModal()">Cancel</button>
+      <button class="btn-save" onclick="saveCard()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ PILLAR MODAL ════ -->
+<div class="modal-overlay" id="pillar-modal" onclick="closeOutside(event,'pillar-modal')">
+  <div class="modal">
+    <h3 id="pillar-modal-h">Add Pillar</h3>
+    <div class="form-row"><label>Name</label><input id="p-name" type="text" placeholder="e.g. Growth, Quality, Community"></div>
+    <div class="form-row"><label>Description</label><textarea id="p-desc" placeholder="What this pillar means for Meticulous…"></textarea></div>
+    <div class="form-row"><label>Icon</label><div class="emoji-options" id="emoji-options"></div></div>
+    <div class="form-row"><label>Color</label><div class="color-options" id="color-options"></div></div>
+    <div class="modal-actions">
+      <button class="delete-link" id="pillar-delete-btn" style="display:none;margin-right:auto" onclick="deletePillar()">Delete Pillar</button>
+      <button class="btn-cancel" onclick="closePillarModal()">Cancel</button>
+      <button class="btn-save" onclick="savePillar()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ SETTINGS MODAL ════ -->
+<div class="modal-overlay" id="settings-modal" onclick="closeOutside(event,'settings-modal')">
+  <div class="modal">
+    <h3>Settings</h3>
+    <div style="padding:14px;background:var(--beige);border:1px solid var(--divider);margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <div id="server-dot" style="width:8px;height:8px;background:var(--soft-gray);flex-shrink:0;"></div>
+        <span style="font-size:11px;font-weight:600;color:var(--black)" id="server-status-text">Checking server…</span>
+      </div>
+      <div style="font-size:10px;color:var(--mid);line-height:1.6">The board reads and writes a single .md file in your Obsidian vault.<br>Changes save automatically. Edit the file in Obsidian and it updates here within seconds.</div>
+    </div>
+    <div class="form-row"><label>Obsidian Vault Path</label><input id="s-vault" type="text" placeholder="e.g. /Users/yourname/Documents/Obsidian"></div>
+    <div class="form-row"><label>Board File (inside vault)</label><input id="s-board-file" type="text" placeholder="e.g. Meticulous/Board.md"></div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById('settings-modal').classList.remove('open')">Close</button><button class="btn-save" onclick="saveSettings()">Save Settings</button></div>
+  </div>
+</div>
+
+<!-- ════ OWNER MODAL ════ -->
+<div class="modal-overlay" id="owner-modal" onclick="closeOutside(event,'owner-modal')">
+  <div class="modal">
+    <h3>Manage Team</h3>
+    <div id="owner-list" style="display:flex;flex-direction:column;margin-bottom:16px;"></div>
+    <div style="display:flex;gap:8px;align-items:center;padding-top:12px;border-top:1px solid var(--divider);">
+      <input id="new-owner-name" type="text" placeholder="Name" style="flex:1;padding:8px 10px;border:1px solid var(--divider);font-family:'Noto Sans',sans-serif;font-size:13px;outline:none;background:var(--beige);">
+      <input id="new-owner-initials" type="text" placeholder="Init" style="width:58px;padding:8px 10px;border:1px solid var(--divider);font-family:'Noto Sans',sans-serif;font-size:12px;outline:none;text-transform:uppercase;background:var(--beige);" maxlength="3">
+      <input id="new-owner-color" type="color" value="#F0380F" style="width:36px;height:36px;border:1px solid var(--divider);cursor:pointer;padding:2px;background:var(--beige);">
+      <button class="btn-save" onclick="addOwner()" style="padding:8px 14px;">Add</button>
+    </div>
+    <div class="modal-actions"><button class="btn-cancel" onclick="document.getElementById('owner-modal').classList.remove('open')">Close</button></div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// DATA
+// ─────────────────────────────────────────
+const FUNCTIONS = {
+  finops:        { label:'Financial & Ops Plan', short:'Fin/Ops',       responsibilities:['Set company budget, approve compensation','Own Financial and Operating Model','Determine manufacturing batch sizes & timing','Approve and sign EPW Purchase Orders','Allocate gross margin across manufacturing, expenses, new products'] },
+  marketing:     { label:'Marketing',            short:'Marketing',      responsibilities:['Drive new sales','Determine marketing strategy and focus areas','Define and maintain Brand','Drive awareness with influencers and community','Content creation'] },
+  operations:    { label:'Operations',           short:'Operations',     responsibilities:['Own data structure, systems and reporting'] },
+  product:       { label:'Product',              short:'Product',        responsibilities:['Prioritize product roadmap (Hardware, Software)','Decide on any product changes (Design, Components)'] },
+  supplychain:   { label:'Supply Chain',         short:'Supply Chain',   responsibilities:['Define and own supply chain software tools with EPW','Ensure 2 suppliers for each critical component','Ensure POs placed with sufficient lead-time for batch start dates','IQC: Ensure suppliers meet quality requirements','BOM Reduction: Lower cost on 1–3 high impact components per batch'] },
+  manufacturing: { label:'Manufacturing',        short:'Manufacturing',  responsibilities:['Define and own manufacturing software tools with EPW','Ensure batches start on time','Ensure sufficient component inventory without delays','Own SOP, jigs, space and layout for warehousing + assembly','Ensure 100% of units shipped meet quality bar','Ensure certification is current for all countries'] },
+  quality:       { label:'Quality',              short:'Quality',        responsibilities:['Determine QC testing SOP for finished product, sub-assemblies, components','Determine QC process (recording and inputting into system)'] },
+  fulfillment:   { label:'Fulfillment / Shipping',short:'Fulfillment',   responsibilities:['Select and negotiate fulfillment partner','Ensure customers receive machines on time','Coordinate with shipping partner on delays, damage and lost products','Ensure regulatory requirements met for each country'] },
+  website:       { label:'Website',              short:'Website',        responsibilities:['Decide on language, layout, conversion of website'] },
+  software:      { label:'Software',             short:'Software',       responsibilities:['Stable release for manufacturing image and customers','Deliver on software roadmap','Firmware, Dial App, iOS/Android/Web App'] },
+  support:       { label:'Customer Support',     short:'Support',        responsibilities:['Voice of the Customer in internal meetings','Handle support requests and backer communication','Coordinate product repairs and replacements'] },
+  roast:         { label:'Roast / Café Partners',short:'Roast/Café',     responsibilities:['Own relationships with Reseller and Referral partners','Drive sales through referral partners','Organize partner events'] },
+  ip:            { label:'IP',                   short:'IP',             responsibilities:['Register patents and trademarks','Litigation'] },
+  accounting:    { label:'Accounting & Taxes',   short:'Accounting',     responsibilities:['Ensure accurate books','Manage tax payments','Salaries and payments'] },
+  legal:         { label:'Legal',                short:'Legal',          responsibilities:['Manage corporate legal documents and status','Duvall Lawsuit'] },
+};
+
+const PILLAR_COLORS = ['#F0380F','#1F1F1F','#1565C0','#2E7D32','#6A1B9A','#E65100','#00695C','#C62828'];
+const EMOJIS = ['🚀','📦','🛠','💬','🌍','🤝','⭐','🔬','💡','🏆','🎯','📈','🔗','🧪','🏗','☕','🔥','💎','🌱','🎨'];
+
+let owners = [];
+let pillars = [];
+let cards = [];
+let nextCardId = 0;
+let dragId=null;
+let activePillar='all', activeFn='all', activeOwner='all', activePri='all';
+let editingCardId=null, editingPillarId=null;
+let selectedEmoji='🎯', selectedColor=PILLAR_COLORS[0];
+
+// ─────────────────────────────────────────
+// PILLARS
+// ─────────────────────────────────────────
+function renderPillars() {
+  const list = document.getElementById('pillar-list');
+  let html = `<div class="pillar-row ${activePillar==='all'?'sel':''}" onclick="setPillar('all')">
+    <div class="pr-top"><span class="pr-icon">🗂</span><span class="pr-count">${cards.filter(c=>c.col!=='done').length}</span></div>
+    <div class="pr-name">All Priorities</div>
+  </div>`;
+  pillars.forEach(p => {
+    const sel = activePillar===p.id;
+    const open = cards.filter(c=>c.pillarId===p.id&&c.col!=='done').length;
+    const total = cards.filter(c=>c.pillarId===p.id).length;
+    const pct = total>0 ? Math.round(cards.filter(c=>c.pillarId===p.id&&c.col==='done').length/total*100) : 0;
+    html += `<div class="pillar-row ${sel?'sel':''}" onclick="setPillar('${p.id}')">
+      <button class="pr-edit" onclick="event.stopPropagation();openPillarModal('${p.id}')">Edit</button>
+      <div class="pr-top"><span class="pr-icon">${p.icon}</span><span class="pr-count" style="${!sel?'color:'+p.color:''}">${open}</span></div>
+      <div class="pr-name" style="${!sel?'color:'+p.color:''}">${p.name}</div>
+      <div class="pr-desc">${p.desc}</div>
+      <div class="pr-bar"><div class="pr-bar-fill" style="width:${pct}%;${!sel?'background:'+p.color:''}"></div></div>
+    </div>`;
+  });
+  list.innerHTML = html;
+}
+
+// ─────────────────────────────────────────
+// FUNCTIONS
+// ─────────────────────────────────────────
+function renderFnList() {
+  const list = document.getElementById('fn-list');
+  let html = `<div class="fn-row ${activeFn==='all'?'sel':''}" onclick="setFn('all')">
+    <div class="fn-dot" style="background:#1F1F1F"></div>
+    <span class="fn-label">All Functions</span>
+  </div>`;
+  Object.entries(FUNCTIONS).forEach(([key,fn]) => {
+    const open = cards.filter(c=>c.fn===key&&c.col!=='done').length;
+    html += `<div class="fn-row ${activeFn===key?'sel':''}" onclick="setFn('${key}')">
+      <div class="fn-dot dot-${key}"></div>
+      <span class="fn-label">${fn.short}</span>
+      ${open>0?`<span class="fn-badge">${open}</span>`:''}
+      <div class="fn-tooltip">
+        <div class="fn-tooltip-title">${fn.label}</div>
+        <ul>${fn.responsibilities.map(r=>`<li>${r}</li>`).join('')}</ul>
+      </div>
+    </div>`;
+  });
+  list.innerHTML = html;
+}
+
+// ─────────────────────────────────────────
+// ACTIVE FILTER BAR
+// ─────────────────────────────────────────
+function renderActiveFilterBar() {
+  const bar = document.getElementById('active-filter-bar');
+  const chips = document.getElementById('active-filter-chips');
+  const parts = [];
+  if (activePillar!=='all') {
+    const p = pillars.find(x=>x.id===activePillar);
+    if (p) parts.push(`<span class="active-filter-chip" style="background:${p.color};border-color:${p.color}" onclick="setPillar('all')">${p.icon} ${p.name} <span class="chip-clear">×</span></span>`);
+  }
+  if (activeFn!=='all') {
+    const fn = FUNCTIONS[activeFn];
+    if (fn) parts.push(`<span class="active-filter-chip" onclick="setFn('all')">${fn.short} <span class="chip-clear">×</span></span>`);
+  }
+  if (parts.length>0) {
+    bar.style.display='flex';
+    chips.innerHTML=parts.join('');
+  } else {
+    bar.style.display='none';
+    chips.innerHTML='';
+  }
+}
+
+// ─────────────────────────────────────────
+// FILTERS
+// ─────────────────────────────────────────
+function setPillar(id){activePillar=id;renderAll();}
+function setFn(key){activeFn=key;renderAll();}
+function filterOwner(id,el){activeOwner=id;document.querySelectorAll('[data-owner]').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderKanban();}
+function filterPri(pri,el){activePri=pri;document.querySelectorAll('[data-pri]').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderKanban();}
+function clearAllFilters(){activePillar='all';activeFn='all';renderAll();}
+
+// ─────────────────────────────────────────
+// KANBAN
+// ─────────────────────────────────────────
+function renderKanban() {
+  ['now','next','waiting','done'].forEach(col => {
+    const container = document.getElementById('col-'+col);
+    const filtered = cards.filter(c =>
+      c.col===col &&
+      (activePillar==='all'||c.pillarId===activePillar) &&
+      (activeFn==='all'||c.fn===activeFn) &&
+      (activeOwner==='all'||c.ownerId===activeOwner) &&
+      (activePri==='all'||c.priority===activePri)
+    );
+    container.innerHTML = filtered.length===0
+      ? '<div class="empty-col">No items</div>'
+      : filtered.map(cardHTML).join('');
+    document.getElementById('count-'+col).textContent = filtered.length;
+  });
+}
+
+function cardHTML(c) {
+  const fn = FUNCTIONS[c.fn];
+  const pillar = pillars.find(p=>p.id===c.pillarId);
+  const stripe = pillar ? `<span class="card-pillar-stripe" style="background:${pillar.color}" title="${pillar.name}"></span>` : '';
+  const o = owners.find(x=>x.id===c.ownerId);
+  const av = o ? `<span class="card-owner-av" style="background:${o.color};width:20px;height:20px;font-size:8px" title="${o.name}">${o.initials}</span>` : '';
+  const link = c.link ? `<a class="card-link" href="#">${c.link}</a>` : '<span></span>';
+  return `<div class="card" id="card-${c.id}" draggable="true"
+    ondragstart="onDragStart(event,${c.id})" ondragend="onDragEnd()" ondblclick="openCardModal(${c.id})">
+    <div class="card-top">
+      <span class="card-fn-badge fn-${c.fn}">${fn?fn.short:c.fn}</span>${stripe}${av}
+    </div>
+    <div class="card-title">${c.title}</div>
+    ${c.note?`<div class="card-note">${c.note}</div>`:''}
+    <div class="card-footer">${link}<div class="card-pri pri-${c.priority}" title="${c.priority}"></div></div>
+  </div>`;
+}
+
+function renderAll(){renderPillars();renderFnList();renderActiveFilterBar();renderKanban();}
+
+// ─────────────────────────────────────────
+// DRAG & DROP
+// ─────────────────────────────────────────
+function onDragStart(e,id){dragId=id;setTimeout(()=>{const el=document.getElementById('card-'+id);if(el)el.classList.add('dragging');},0);}
+function onDragEnd(){dragId=null;document.querySelectorAll('.card').forEach(c=>c.classList.remove('dragging'));document.querySelectorAll('.cards-container').forEach(c=>{c.classList.remove('drag-over');c.querySelectorAll('.drop-indicator').forEach(d=>d.remove());});}
+function onDragOver(e){
+  e.preventDefault();
+  const container=e.currentTarget;
+  container.classList.add('drag-over');
+  container.querySelectorAll('.drop-indicator').forEach(d=>d.remove());
+  const cardEls=[...container.querySelectorAll('.card:not(.dragging)')];
+  let before=null;
+  for(const el of cardEls){const rect=el.getBoundingClientRect();if(e.clientY<rect.top+rect.height/2){before=el;break;}}
+  const ind=document.createElement('div');ind.className='drop-indicator';
+  if(before)container.insertBefore(ind,before);else container.appendChild(ind);
+}
+function onDragLeave(e){if(!e.currentTarget.contains(e.relatedTarget)){e.currentTarget.classList.remove('drag-over');e.currentTarget.querySelectorAll('.drop-indicator').forEach(d=>d.remove());}}
+function onDrop(e,col){
+  e.preventDefault();
+  const container=e.currentTarget;
+  container.classList.remove('drag-over');
+  container.querySelectorAll('.drop-indicator').forEach(d=>d.remove());
+  if(dragId===null)return;
+  const card=cards.find(x=>x.id===dragId);
+  if(!card)return;
+  // Find insertion position
+  const cardEls=[...container.querySelectorAll('.card:not(.dragging)')];
+  let insertBeforeId=null;
+  for(const el of cardEls){const rect=el.getBoundingClientRect();if(e.clientY<rect.top+rect.height/2){insertBeforeId=parseInt(el.id.replace('card-',''));break;}}
+  // Remove card from array
+  cards=cards.filter(c=>c.id!==dragId);
+  card.col=col;
+  // Insert at position
+  if(insertBeforeId!==null){const idx=cards.findIndex(c=>c.id===insertBeforeId);cards.splice(idx,0,card);}
+  else{let lastIdx=-1;cards.forEach((c,i)=>{if(c.col===col)lastIdx=i;});cards.splice(lastIdx+1,0,card);}
+  dragId=null;renderAll();scheduleSave();
+}
+
+// ─────────────────────────────────────────
+// CARD MODAL
+// ─────────────────────────────────────────
+function populatePillarSelect(sel){document.getElementById('c-pillar').innerHTML='<option value="">— Untagged —</option>'+pillars.map(p=>`<option value="${p.id}" ${p.id===sel?'selected':''}>${p.icon} ${p.name}</option>`).join('');}
+function populateOwnerSelect(sel){document.getElementById('c-owner').innerHTML='<option value="">— Unassigned —</option>'+owners.map(o=>`<option value="${o.id}" ${o.id===sel?'selected':''}>${o.name}</option>`).join('');}
+function openCardModal(id){
+  editingCardId=id||null;
+  const c=id?cards.find(x=>x.id===id):null;
+  document.getElementById('card-modal-h').textContent=c?'Edit Card':'Add Card';
+  document.getElementById('c-title').value=c?c.title:'';
+  document.getElementById('c-note').value=c?c.note:'';
+  document.getElementById('c-fn').value=c?c.fn:(activeFn!=='all'?activeFn:'operations');
+  document.getElementById('c-col').value=c?c.col:'now';
+  document.getElementById('c-priority').value=c?c.priority:'medium';
+  document.getElementById('c-link').value=c?c.link:'';
+  document.getElementById('card-delete-btn').style.display=c?'block':'none';
+  populatePillarSelect(c?c.pillarId:(activePillar!=='all'?activePillar:''));
+  populateOwnerSelect(c?c.ownerId:'');
+  document.getElementById('card-modal').classList.add('open');
+  document.getElementById('c-title').focus();
+}
+function closeCardModal(){document.getElementById('card-modal').classList.remove('open');}
+function saveCard(){
+  const title=document.getElementById('c-title').value.trim();
+  if(!title){document.getElementById('c-title').focus();return;}
+  const data={title,note:document.getElementById('c-note').value.trim(),fn:document.getElementById('c-fn').value,
+    ownerId:document.getElementById('c-owner').value,col:document.getElementById('c-col').value,
+    priority:document.getElementById('c-priority').value,link:document.getElementById('c-link').value.trim(),
+    pillarId:document.getElementById('c-pillar').value};
+  if(editingCardId) Object.assign(cards.find(c=>c.id===editingCardId),data);
+  else cards.push({id:++nextCardId,...data});
+  closeCardModal();renderAll();scheduleSave();
+}
+function deleteCard(){
+  if(!editingCardId)return;
+  cards=cards.filter(c=>c.id!==editingCardId);
+  closeCardModal();renderAll();scheduleSave();
+}
+
+// ─────────────────────────────────────────
+// PILLAR MODAL
+// ─────────────────────────────────────────
+function buildEmojiPicker(){document.getElementById('emoji-options').innerHTML=EMOJIS.map(e=>`<span class="emoji-opt ${e===selectedEmoji?'selected':''}" onclick="selectEmoji('${e}',this)">${e}</span>`).join('');}
+function buildColorPicker(){document.getElementById('color-options').innerHTML=PILLAR_COLORS.map(c=>`<div class="color-opt ${c===selectedColor?'selected':''}" style="background:${c}" onclick="selectColor('${c}',this)"></div>`).join('');}
+function selectEmoji(e,el){selectedEmoji=e;document.querySelectorAll('.emoji-opt').forEach(x=>x.classList.remove('selected'));el.classList.add('selected');}
+function selectColor(c,el){selectedColor=c;document.querySelectorAll('.color-opt').forEach(x=>x.classList.remove('selected'));el.classList.add('selected');}
+function openPillarModal(id){
+  editingPillarId=id||null;
+  const p=id?pillars.find(x=>x.id===id):null;
+  document.getElementById('pillar-modal-h').textContent=p?'Edit Pillar':'Add Pillar';
+  document.getElementById('p-name').value=p?p.name:'';
+  document.getElementById('p-desc').value=p?p.desc:'';
+  document.getElementById('pillar-delete-btn').style.display=p?'block':'none';
+  selectedEmoji=p?p.icon:'🎯';selectedColor=p?p.color:PILLAR_COLORS[0];
+  buildEmojiPicker();buildColorPicker();
+  document.getElementById('pillar-modal').classList.add('open');
+  document.getElementById('p-name').focus();
+}
+function closePillarModal(){document.getElementById('pillar-modal').classList.remove('open');}
+function savePillar(){
+  const name=document.getElementById('p-name').value.trim();
+  if(!name){document.getElementById('p-name').focus();return;}
+  const data={name,desc:document.getElementById('p-desc').value.trim(),icon:selectedEmoji,color:selectedColor};
+  if(editingPillarId) Object.assign(pillars.find(p=>p.id===editingPillarId),data);
+  else pillars.push({id:'p'+(++nextPillarId),...data});
+  closePillarModal();renderAll();scheduleSave();
+}
+function deletePillar(){
+  if(!editingPillarId)return;
+  pillars=pillars.filter(p=>p.id!==editingPillarId);
+  cards.forEach(c=>{if(c.pillarId===editingPillarId)c.pillarId='';});
+  if(activePillar===editingPillarId)activePillar='all';
+  closePillarModal();renderAll();scheduleSave();
+}
+
+// ─────────────────────────────────────────
+// OWNER MODAL
+// ─────────────────────────────────────────
+function renderOwnerModal(){
+  document.getElementById('owner-list').innerHTML=owners.map(o=>
+    `<div class="owner-item">
+      <div class="owner-av-lg" style="background:${o.color}">${o.initials}</div>
+      <span style="font-size:13px;font-weight:500;color:var(--black);flex:1">${o.name}</span>
+      <button onclick="removeOwner('${o.id}')" style="background:none;border:none;color:#C62828;cursor:pointer;font-size:16px;font-weight:700;">×</button>
+    </div>`).join('');
+}
+function addOwner(){
+  const name=document.getElementById('new-owner-name').value.trim();
+  const initials=document.getElementById('new-owner-initials').value.trim().toUpperCase();
+  const color=document.getElementById('new-owner-color').value;
+  if(!name||!initials)return;
+  owners.push({id:'o'+(++nextOwnerId),name,initials,color});
+  document.getElementById('new-owner-name').value='';
+  document.getElementById('new-owner-initials').value='';
+  renderOwnerModal();renderOwnerPills();renderAll();scheduleSave();
+}
+function removeOwner(id){
+  owners=owners.filter(o=>o.id!==id);
+  cards.forEach(c=>{if(c.ownerId===id)c.ownerId='';});
+  renderOwnerModal();renderOwnerPills();renderAll();scheduleSave();
+}
+function renderOwnerPills(){
+  document.getElementById('owner-filter-pills').innerHTML=owners.map(o=>
+    `<button class="pill" data-owner="${o.id}" onclick="filterOwner('${o.id}',this)">${o.initials}</button>`
+  ).join('');
+}
+
+function closeOutside(e,id){if(e.target.id===id)document.getElementById(id).classList.remove('open');}
+
+// ─────────────────────────────────────────
+// SERVER PERSISTENCE
+// ─────────────────────────────────────────
+let lastMtime = 0;
+let saveTimer = null;
+let saving = false;
+let nextPillarId = 0;
+let nextOwnerId = 0;
+
+function buildBoardData() {
+  const ownerMap = Object.fromEntries(owners.map(o => [o.id, o.name]));
+  const pillarMap = Object.fromEntries(pillars.map(p => [p.id, p.name]));
+  const boardPillars = pillars.map(p => ({icon:p.icon, name:p.name, color:p.color, desc:p.desc}));
+  const boardOwners = owners.map(o => ({name:o.name, initials:o.initials, color:o.color}));
+  const columns = {};
+  ['now','next','waiting','done'].forEach(col => {
+    columns[col] = cards.filter(c => c.col === col).map(c => ({
+      title: c.title, priority: c.priority,
+      owner: ownerMap[c.ownerId] || '', fn: c.fn || '',
+      pillar: pillarMap[c.pillarId] || '',
+      link: c.link || '', note: c.note || ''
+    }));
+  });
+  return { pillars: boardPillars, owners: boardOwners, columns };
+}
+
+function scheduleSave() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveToServer, 300);
+}
+
+async function saveToServer() {
+  saveTimer = null;
+  saving = true;
+  const status = document.getElementById('save-status');
+  if (status) { status.textContent = 'Saving…'; status.style.color = '#E65100'; }
+  try {
+    const r = await fetch('/api/board', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(buildBoardData())
+    });
+    const result = await r.json();
+    if (result.mtime) lastMtime = result.mtime;
+    if (status) { status.textContent = 'Saved'; status.style.color = '#2E7D32'; setTimeout(() => { status.textContent = ''; }, 2000); }
+  } catch(e) {
+    console.warn('Save failed:', e);
+    if (status) { status.textContent = 'Save failed'; status.style.color = '#C62828'; }
+  } finally {
+    saving = false;
+  }
+}
+
+function applyBoardData(board, mtime) {
+  lastMtime = mtime;
+  // Assign IDs to pillars
+  pillars = (board.pillars || []).map((p, i) => ({...p, id: 'p' + (i+1)}));
+  nextPillarId = pillars.length + 1;
+  // Assign IDs to owners
+  owners = (board.owners || []).map((o, i) => ({...o, id: 'o' + (i+1)}));
+  nextOwnerId = owners.length + 1;
+  // Build reverse maps
+  const ownerByName = Object.fromEntries(owners.map(o => [o.name, o.id]));
+  const pillarByName = Object.fromEntries(pillars.map(p => [p.name, p.id]));
+  // Flatten columns to cards
+  cards = [];
+  let cardId = 0;
+  ['now','next','waiting','done'].forEach(col => {
+    (board.columns[col] || []).forEach(c => {
+      cards.push({
+        id: ++cardId, title: c.title || '', note: c.note || '',
+        fn: c.fn || '', ownerId: ownerByName[c.owner] || '',
+        col, priority: c.priority || 'medium',
+        link: c.link || '', pillarId: pillarByName[c.pillar] || ''
+      });
+    });
+  });
+  nextCardId = cardId + 1;
+}
+
+async function loadBoard() {
+  try {
+    const r = await fetch('/api/board', { signal: AbortSignal.timeout(3000) });
+    const { board, mtime } = await r.json();
+    applyBoardData(board, mtime);
+    return true;
+  } catch(e) {
+    console.warn('Failed to load board:', e);
+    return false;
+  }
+}
+
+async function pollForChanges() {
+  if (saving) return;
+  // Don't reload while a modal is open
+  if (document.querySelector('.modal-overlay.open')) return;
+  try {
+    const r = await fetch('/api/board', { signal: AbortSignal.timeout(2000) });
+    const { board, mtime } = await r.json();
+    if (mtime !== lastMtime) {
+      applyBoardData(board, mtime);
+      renderOwnerPills(); renderAll();
+    }
+  } catch(e) {}
+}
+
+// ─────────────────────────────────────────
+// SETTINGS
+// ─────────────────────────────────────────
+function setServerStatus(state, text) {
+  const dot = document.getElementById('server-dot');
+  const stxt = document.getElementById('server-status-text');
+  if (!dot) return;
+  const colors = { ok:'#2E7D32', error:'#C62828', off:'#D0D0CE' };
+  dot.style.background = colors[state] || colors.off;
+  if (stxt) stxt.textContent = text;
+}
+
+async function saveSettings() {
+  const vault = document.getElementById('s-vault').value.trim();
+  const boardFile = document.getElementById('s-board-file').value.trim();
+  if (!vault) { document.getElementById('s-vault').focus(); return; }
+  try {
+    await fetch('/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vault_path: vault, board_file: boardFile || 'Meticulous/Board.md' })
+    });
+    document.getElementById('settings-modal').classList.remove('open');
+    await loadBoard();
+    renderOwnerPills(); renderAll();
+  } catch(e) {
+    alert('Could not save settings — is the server running?');
+  }
+}
+
+async function loadSettingsModal() {
+  try {
+    const r = await fetch('/ping', { signal: AbortSignal.timeout(1500) });
+    if (r.ok) {
+      const data = await r.json();
+      setServerStatus('ok', 'Connected — ' + data.board_file);
+    }
+  } catch(e) {
+    setServerStatus('off', 'Server offline');
+  }
+  try {
+    const r = await fetch('/config');
+    const cfg = await r.json();
+    document.getElementById('s-vault').value = cfg.vault || '';
+    document.getElementById('s-board-file').value = cfg.board_file || 'Meticulous/Board.md';
+  } catch(e) {}
+}
+
+// ─────────────────────────────────────────
+// MIGRATION FROM LOCALSTORAGE
+// ─────────────────────────────────────────
+async function migrateFromLocalStorage() {
+  const LS_KEY = 'meticulous-board-v1';
+  const raw = localStorage.getItem(LS_KEY);
+  if (!raw) return false;
+  try {
+    const data = JSON.parse(raw);
+    if (!data.cards || data.cards.length === 0) return false;
+    const ownerMap = {};
+    (data.owners || []).forEach(o => { ownerMap[o.id] = o; });
+    const pillarMap = {};
+    (data.pillars || []).forEach(p => { pillarMap[p.id] = p; });
+    const boardPillars = (data.pillars || []).map(p => ({icon:p.icon, name:p.name, color:p.color, desc:p.desc}));
+    const boardOwners = (data.owners || []).map(o => ({name:o.name, initials:o.initials, color:o.color}));
+    const columns = {now:[], next:[], waiting:[], done:[]};
+    (data.cards || []).forEach(c => {
+      const col = c.col || 'now';
+      if (!columns[col]) columns[col] = [];
+      columns[col].push({
+        title: c.title, priority: c.priority || 'medium',
+        owner: (ownerMap[c.ownerId] || {}).name || '',
+        fn: c.fn || '', pillar: (pillarMap[c.pillarId] || {}).name || '',
+        link: c.link || '', note: c.note || ''
+      });
+    });
+    const boardData = { pillars: boardPillars, owners: boardOwners, columns };
+    const r = await fetch('/api/board', {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(boardData)
+    });
+    if (r.ok) {
+      localStorage.removeItem(LS_KEY);
+      console.log('Migrated localStorage data to Board.md');
+      return true;
+    }
+  } catch(e) { console.warn('Migration from localStorage failed:', e); }
+  return false;
+}
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+document.getElementById('today-date').textContent =
+  new Date().toLocaleDateString('en-CH',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
+
+(async function init() {
+  // Try to migrate old localStorage data first
+  const migrated = await migrateFromLocalStorage();
+  // Load board from server
+  const loaded = await loadBoard();
+  if (!loaded) {
+    console.warn('Could not load board from server. Is the server running?');
+  }
+  renderOwnerPills();
+  renderAll();
+  // Poll for external changes (Obsidian edits) every 3 seconds
+  setInterval(pollForChanges, 3000);
+})();
+
+</script>
+</body>
+</html>
