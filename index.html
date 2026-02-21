@@ -226,6 +226,8 @@
     position:relative;
   }
   .fn-row:last-child { border-bottom:none; }
+  .fn-row.fn-dragging { opacity:0.25; }
+  .fn-row.fn-drag-over { border-top:2px solid var(--red); padding-top:7px; }
   .fn-row:hover { background:var(--white); }
   .fn-row.sel { background:var(--white); border-left-color:var(--red); }
   .fn-dot { width:6px; height:6px; flex-shrink:0; border-radius:var(--border-radius); }
@@ -321,9 +323,11 @@
   .pill.active { background:var(--black); color:var(--white); border-color:var(--black); }
 
   /* ── BOARD ── */
-  .board { display:grid; grid-template-columns:repeat(4,1fr); flex:1; overflow:hidden; }
+  .board { display:grid; grid-template-columns:repeat(4,1fr); flex:1; overflow-x:auto; overflow-y:hidden; }
   .column { display:flex; flex-direction:column; border-right:1px solid var(--divider); overflow:hidden; }
   .column:last-child { border-right:none; }
+  .column.col-dragging { opacity:0.3; }
+  .column.col-drag-over { border-left:2px solid var(--red); }
 
   .col-header {
     padding:0 14px; height:40px;
@@ -343,14 +347,7 @@
     border-radius:var(--border-radius);
   }
 
-  .col-now .kdot   { background:#2E7D32; }
-  .col-next .kdot  { background:#1565C0; }
-  .col-waiting .kdot { background:#E65100; }
-  .col-done .kdot  { background:var(--soft-gray); }
-  .col-now .col-header { border-top:2px solid #2E7D32; }
-  .col-next .col-header { border-top:2px solid #1565C0; }
-  .col-waiting .col-header { border-top:2px solid #E65100; }
-  .col-done .col-header { border-top:2px solid var(--soft-gray); }
+  /* column colors applied via inline styles in renderKanban() */
 
   .cards-container {
     flex:1; overflow-y:auto;
@@ -533,6 +530,11 @@
     </div>
 
     <div class="sub-filter-bar">
+      <span class="filter-label">View</span>
+      <button class="pill active" data-view="stage" onclick="setView('stage',this)">Stage</button>
+      <button class="pill" data-view="functions" onclick="setView('functions',this)">Functions</button>
+      <button class="pill" data-view="priority" onclick="setView('priority',this)">Priority</button>
+      <div class="filter-sep"></div>
       <span class="filter-label">Owner</span>
       <button class="pill active" data-owner="all" onclick="filterOwner('all',this)">All</button>
       <span id="owner-filter-pills" style="display:contents"></span>
@@ -542,26 +544,13 @@
       <button class="pill" data-pri="high" onclick="filterPri('high',this)">High</button>
       <button class="pill" data-pri="medium" onclick="filterPri('medium',this)">Mid</button>
       <button class="pill" data-pri="low" onclick="filterPri('low',this)">Low</button>
+      <div class="filter-sep"></div>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--mid)">
+        <input type="checkbox" id="hide-done-cb" onchange="toggleHideDone(this.checked)" style="cursor:pointer;margin:0">Hide Done
+      </label>
     </div>
 
-    <div class="board">
-      <div class="column col-now">
-        <div class="col-header"><div class="kdot"></div><h2>Now</h2><span class="col-count" id="count-now">0</span></div>
-        <div class="cards-container" id="col-now" ondragover="onDragOver(event)" ondrop="onDrop(event,'now')" ondragleave="onDragLeave(event)"></div>
-      </div>
-      <div class="column col-next">
-        <div class="col-header"><div class="kdot"></div><h2>Next Up</h2><span class="col-count" id="count-next">0</span></div>
-        <div class="cards-container" id="col-next" ondragover="onDragOver(event)" ondrop="onDrop(event,'next')" ondragleave="onDragLeave(event)"></div>
-      </div>
-      <div class="column col-waiting">
-        <div class="col-header"><div class="kdot"></div><h2>Waiting</h2><span class="col-count" id="count-waiting">0</span></div>
-        <div class="cards-container" id="col-waiting" ondragover="onDragOver(event)" ondrop="onDrop(event,'waiting')" ondragleave="onDragLeave(event)"></div>
-      </div>
-      <div class="column col-done">
-        <div class="col-header"><div class="kdot"></div><h2>Done</h2><span class="col-count" id="count-done">0</span></div>
-        <div class="cards-container" id="col-done" ondragover="onDragOver(event)" ondrop="onDrop(event,'done')" ondragleave="onDragLeave(event)"></div>
-      </div>
-    </div>
+    <div class="board" id="board"></div>
   </div>
 </div>
 
@@ -704,8 +693,27 @@ let owners = [];
 let pillars = [];
 let cards = [];
 let nextCardId = 0;
-let dragId=null;
-let activePillar='all', activeFn='all', activeOwner='all', activePri='all';
+let dragId=null, dragColKey=null, dragFnKey=null;
+let fnOrder = Object.keys(FUNCTIONS);
+let activePillar='all', activeFn='all', activeOwner='all', activePri='all', hideDone=false;
+let viewMode = 'stage';
+const STAGE_COLS = [
+  {key:'now',     label:'Now',     color:'#2E7D32'},
+  {key:'next',    label:'Next Up', color:'#1565C0'},
+  {key:'waiting', label:'Waiting', color:'#E65100'},
+  {key:'done',    label:'Done',    color:'#D9D9D9'}
+];
+const FN_COLORS = {
+  finops:'#B8A050', marketing:'#F0380F', operations:'#1565C0', product:'#2E7D32',
+  supplychain:'#E65100', manufacturing:'#6A1B9A', quality:'#F9A825', fulfillment:'#00695C',
+  website:'#558B2F', software:'#00838F', support:'#BF360C', roast:'#6A1B9A',
+  ip:'#9C27B0', accounting:'#2E7D32', legal:'#C62828'
+};
+const PRI_COLS = [
+  {key:'high',   label:'High',   color:'#F0380F'},
+  {key:'medium', label:'Medium', color:'#E65100'},
+  {key:'low',    label:'Low',    color:'#D9D9D9'}
+];
 let editingCardId=null, editingPillarId=null;
 let selectedEmoji='🎯', selectedColor=PILLAR_COLORS[0];
 
@@ -743,9 +751,14 @@ function renderFnList() {
     <div class="fn-dot" style="background:#1F1F1F"></div>
     <span class="fn-label">All Functions</span>
   </div>`;
-  Object.entries(FUNCTIONS).forEach(([key,fn]) => {
+  fnOrder.forEach(key => {
+    const fn = FUNCTIONS[key];
+    if (!fn) return;
     const open = cards.filter(c=>c.fn===key&&c.col!=='done').length;
-    html += `<div class="fn-row ${activeFn===key?'sel':''}" onclick="setFn('${key}')">
+    html += `<div class="fn-row ${activeFn===key?'sel':''}" data-fn-key="${key}" draggable="true"
+      onclick="setFn('${key}')"
+      ondragstart="onFnRowDragStart(event,'${key}')" ondragend="onFnRowDragEnd()"
+      ondragover="onFnRowDragOver(event)" ondrop="onFnRowDrop(event,'${key}')" ondragleave="onFnRowDragLeave(event)">
       <div class="fn-dot dot-${key}"></div>
       <span class="fn-label">${fn.short}</span>
       ${open>0?`<span class="fn-badge">${open}</span>`:''}
@@ -790,25 +803,49 @@ function setFn(key){activeFn=key;renderAll();}
 function filterOwner(id,el){activeOwner=id;document.querySelectorAll('[data-owner]').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderKanban();}
 function filterPri(pri,el){activePri=pri;document.querySelectorAll('[data-pri]').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderKanban();}
 function clearAllFilters(){activePillar='all';activeFn='all';renderAll();}
+function toggleHideDone(v){hideDone=v;renderKanban();}
+function setView(mode,el){viewMode=mode;document.querySelectorAll('[data-view]').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderKanban();}
 
 // ─────────────────────────────────────────
 // KANBAN
 // ─────────────────────────────────────────
+function getColumnDefs() {
+  if (viewMode==='functions') {
+    const usedFns = new Set(cards.map(c=>c.fn).filter(Boolean));
+    return fnOrder.filter(k=>usedFns.has(k)).map(k=>({key:k, label:FUNCTIONS[k].short, color:FN_COLORS[k]||'#8A8A88', field:'fn'}));
+  }
+  if (viewMode==='priority') return PRI_COLS.map(c=>({...c, field:'priority'}));
+  return (hideDone ? STAGE_COLS.filter(c=>c.key!=='done') : STAGE_COLS).map(c=>({...c, field:'col'}));
+}
+
 function renderKanban() {
-  ['now','next','waiting','done'].forEach(col => {
-    const container = document.getElementById('col-'+col);
+  const board = document.getElementById('board');
+  const cols = getColumnDefs();
+  const isFn = viewMode==='functions';
+  board.style.gridTemplateColumns = cols.map(()=>isFn?'minmax(220px,1fr)':'1fr').join(' ');
+
+  board.innerHTML = cols.map(def => {
     const filtered = cards.filter(c =>
-      c.col===col &&
+      c[def.field]===def.key &&
+      (!hideDone||c.col!=='done') &&
       (activePillar==='all'||c.pillarId===activePillar) &&
       (activeFn==='all'||c.fn===activeFn) &&
       (activeOwner==='all'||c.ownerId===activeOwner) &&
       (activePri==='all'||c.priority===activePri)
     );
-    container.innerHTML = filtered.length===0
+    const cardsHtml = filtered.length===0
       ? '<div class="empty-col">No items</div>'
       : filtered.map(cardHTML).join('');
-    document.getElementById('count-'+col).textContent = filtered.length;
-  });
+    const colDrag = isFn ? `draggable="true" ondragstart="onColDragStart(event,'${def.key}')" ondragend="onColDragEnd()" style="cursor:grab"` : '';
+    return `<div class="column" data-col-key="${def.key}" ondragover="${isFn?'onColDragOver(event)':''}" ondrop="${isFn?`onColDrop(event,'${def.key}')`:''}" ondragleave="${isFn?'onColDragLeave(event)':''}">
+      <div class="col-header" style="border-top:2px solid ${def.color}" ${colDrag}>
+        <div class="kdot" style="background:${def.color}"></div>
+        <h2>${def.label}</h2>
+        <span class="col-count">${filtered.length}</span>
+      </div>
+      <div class="cards-container" ondragover="onDragOver(event)" ondrop="onDrop(event,'${def.key}')" ondragleave="onDragLeave(event)">${cardsHtml}</div>
+    </div>`;
+  }).join('');
 }
 
 function cardHTML(c) {
@@ -835,7 +872,7 @@ function renderAll(){renderPillars();renderFnList();renderActiveFilterBar();rend
 // DRAG & DROP
 // ─────────────────────────────────────────
 function onDragStart(e,id){dragId=id;setTimeout(()=>{const el=document.getElementById('card-'+id);if(el)el.classList.add('dragging');},0);}
-function onDragEnd(){dragId=null;document.querySelectorAll('.card').forEach(c=>c.classList.remove('dragging'));document.querySelectorAll('.cards-container').forEach(c=>{c.classList.remove('drag-over');c.querySelectorAll('.drop-indicator').forEach(d=>d.remove());});}
+function onDragEnd(){dragId=null;dragColKey=null;document.querySelectorAll('.card').forEach(c=>c.classList.remove('dragging'));document.querySelectorAll('.cards-container').forEach(c=>{c.classList.remove('drag-over');c.querySelectorAll('.drop-indicator').forEach(d=>d.remove());});document.querySelectorAll('.column').forEach(c=>c.classList.remove('col-dragging','col-drag-over'));}
 function onDragOver(e){
   e.preventDefault();
   const container=e.currentTarget;
@@ -848,7 +885,7 @@ function onDragOver(e){
   if(before)container.insertBefore(ind,before);else container.appendChild(ind);
 }
 function onDragLeave(e){if(!e.currentTarget.contains(e.relatedTarget)){e.currentTarget.classList.remove('drag-over');e.currentTarget.querySelectorAll('.drop-indicator').forEach(d=>d.remove());}}
-function onDrop(e,col){
+function onDrop(e,targetKey){
   e.preventDefault();
   const container=e.currentTarget;
   container.classList.remove('drag-over');
@@ -862,11 +899,88 @@ function onDrop(e,col){
   for(const el of cardEls){const rect=el.getBoundingClientRect();if(e.clientY<rect.top+rect.height/2){insertBeforeId=parseInt(el.id.replace('card-',''));break;}}
   // Remove card from array
   cards=cards.filter(c=>c.id!==dragId);
-  card.col=col;
+  // Update the correct field based on view mode
+  const field = viewMode==='functions'?'fn':viewMode==='priority'?'priority':'col';
+  card[field]=targetKey;
   // Insert at position
   if(insertBeforeId!==null){const idx=cards.findIndex(c=>c.id===insertBeforeId);cards.splice(idx,0,card);}
-  else{let lastIdx=-1;cards.forEach((c,i)=>{if(c.col===col)lastIdx=i;});cards.splice(lastIdx+1,0,card);}
+  else{let lastIdx=-1;cards.forEach((c,i)=>{if(c[field]===targetKey)lastIdx=i;});cards.splice(lastIdx+1,0,card);}
   dragId=null;renderAll();scheduleSave();
+}
+
+// ── COLUMN DRAG (Functions view) ──
+function onColDragStart(e,key){
+  if(dragId!==null)return; // card drag in progress
+  dragColKey=key;
+  e.dataTransfer.effectAllowed='move';
+  e.stopPropagation();
+  setTimeout(()=>{const col=document.querySelector(`.column[data-col-key="${key}"]`);if(col)col.classList.add('col-dragging');},0);
+}
+function onColDragEnd(){
+  dragColKey=null;
+  document.querySelectorAll('.column').forEach(c=>{c.classList.remove('col-dragging','col-drag-over');});
+}
+function onColDragOver(e){
+  if(dragColKey===null)return;
+  e.preventDefault();
+  e.stopPropagation();
+  const col=e.currentTarget;
+  if(col.dataset.colKey===dragColKey)return;
+  document.querySelectorAll('.column').forEach(c=>c.classList.remove('col-drag-over'));
+  col.classList.add('col-drag-over');
+}
+function onColDragLeave(e){
+  if(dragColKey===null)return;
+  if(!e.currentTarget.contains(e.relatedTarget))e.currentTarget.classList.remove('col-drag-over');
+}
+function onColDrop(e,targetKey){
+  e.preventDefault();
+  e.stopPropagation();
+  if(dragColKey===null||dragColKey===targetKey)return;
+  const fromIdx=fnOrder.indexOf(dragColKey);
+  const toIdx=fnOrder.indexOf(targetKey);
+  if(fromIdx===-1||toIdx===-1)return;
+  fnOrder.splice(fromIdx,1);
+  fnOrder.splice(toIdx,0,dragColKey);
+  dragColKey=null;
+  renderAll();
+}
+
+// ── FN ROW DRAG (sidebar reorder) ──
+function onFnRowDragStart(e,key){
+  dragFnKey=key;
+  e.dataTransfer.effectAllowed='move';
+  e.stopPropagation();
+  setTimeout(()=>{const row=document.querySelector(`.fn-row[data-fn-key="${key}"]`);if(row)row.classList.add('fn-dragging');},0);
+}
+function onFnRowDragEnd(){
+  dragFnKey=null;
+  document.querySelectorAll('.fn-row').forEach(r=>r.classList.remove('fn-dragging','fn-drag-over'));
+}
+function onFnRowDragOver(e){
+  if(dragFnKey===null)return;
+  e.preventDefault();
+  e.stopPropagation();
+  const row=e.currentTarget;
+  if(row.dataset.fnKey===dragFnKey)return;
+  document.querySelectorAll('.fn-row').forEach(r=>r.classList.remove('fn-drag-over'));
+  row.classList.add('fn-drag-over');
+}
+function onFnRowDragLeave(e){
+  if(dragFnKey===null)return;
+  if(!e.currentTarget.contains(e.relatedTarget))e.currentTarget.classList.remove('fn-drag-over');
+}
+function onFnRowDrop(e,targetKey){
+  e.preventDefault();
+  e.stopPropagation();
+  if(dragFnKey===null||dragFnKey===targetKey)return;
+  const fromIdx=fnOrder.indexOf(dragFnKey);
+  const toIdx=fnOrder.indexOf(targetKey);
+  if(fromIdx===-1||toIdx===-1)return;
+  fnOrder.splice(fromIdx,1);
+  fnOrder.splice(toIdx,0,dragFnKey);
+  dragFnKey=null;
+  renderAll();
 }
 
 // ─────────────────────────────────────────
