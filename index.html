@@ -405,6 +405,8 @@
   .card-due.due-overdue { color:#C62828; }
   .card-due.due-soon { color:#E65100; }
   .card-due.due-ok { color:var(--mid); }
+  .card.card-overdue { border-left:3px solid #C62828; }
+  .card.card-due-soon { border-left:3px solid #E65100; }
 
   .card-next-action {
     font-size:11px; font-weight:600; color:var(--black); line-height:1.4;
@@ -712,9 +714,9 @@ let owners = [];
 let pillars = [];
 let cards = [];
 let nextCardId = 0;
-let dragId=null, dragColKey=null, dragFnKey=null;
+let dragId=null, dragColKey=null, dragFnKey=null, justDragged=false;
 let fnOrder = Object.keys(FUNCTIONS);
-let activePillar='all', activeFn='all', activeOwner='all', activePri='all', hideDone=false, compactMode=false;
+let activePillar='all', activeFn='all', activeOwner='all', activePri='all', hideDone=localStorage.getItem('mb-hide-done')!=='0', compactMode=false;
 let viewMode = 'stage';
 const STAGE_COLS = [
   {key:'now',     label:'Now',     color:'#2E7D32'},
@@ -823,7 +825,7 @@ function setFn(key){activeFn=key;renderAll();}
 function filterOwner(id,el){activeOwner=id;document.querySelectorAll('[data-owner]').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderKanban();}
 function filterPri(pri,el){activePri=pri;document.querySelectorAll('[data-pri]').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderKanban();}
 function clearAllFilters(){activePillar='all';activeFn='all';renderAll();}
-function toggleHideDone(v){hideDone=v;renderKanban();}
+function toggleHideDone(v){hideDone=v;localStorage.setItem('mb-hide-done',v?'1':'0');renderKanban();}
 function toggleCompact(v){compactMode=v;renderKanban();}
 function setView(mode,el){viewMode=mode;document.querySelectorAll('[data-view]').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderKanban();}
 
@@ -869,6 +871,12 @@ function renderKanban() {
   }).join('');
 }
 
+function renderNote(text) {
+  let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  s = s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  s = s.replace(/(^|\n)- /g,'$1\u2022 ');
+  return s;
+}
 function priDots(pri) {
   const n = pri==='high'?3:pri==='medium'?2:pri==='low'?1:0;
   return [0,1,2].map(i=>`<span class="pri-dot${i<n?' filled':''}"></span>`).join('');
@@ -886,11 +894,14 @@ function cardHTML(c) {
     linkHtml = `<a class="card-link" href="${href}" onclick="event.stopPropagation()">${c.link}</a>`;
   }
   let dueHtml = '';
+  let dueCls = '';
   if (c.due) {
     const today = new Date(); today.setHours(0,0,0,0);
     const dueDate = new Date(c.due + 'T00:00:00');
     const diffDays = Math.round((dueDate - today) / 86400000);
     const cls = diffDays < 0 ? 'due-overdue' : diffDays <= 3 ? 'due-soon' : 'due-ok';
+    if (diffDays < 0) dueCls = 'card-overdue';
+    else if (diffDays <= 3) dueCls = 'card-due-soon';
     const label = diffDays < 0 ? `${-diffDays}d overdue` : diffDays === 0 ? 'Today' : diffDays === 1 ? 'Tomorrow' : `${diffDays}d`;
     dueHtml = `<span class="card-due ${cls}" title="${c.due}">${label}</span>`;
   }
@@ -910,14 +921,14 @@ function cardHTML(c) {
     ageHtml = `<span class="card-age ${ageCls}" title="In column ${ageDays} days">${ageLabel}</span>`;
   }
   const nextActionHtml = c.nextAction ? `<div class="card-next-action">\u25B8 ${c.nextAction}</div>` : '';
-  return `<div class="card" id="card-${c.id}" draggable="true"
-    ondragstart="onDragStart(event,${c.id})" ondragend="onDragEnd()" ondblclick="openCardModal(${c.id})">
+  return `<div class="card${dueCls?' '+dueCls:''}" id="card-${c.id}" draggable="true"
+    ondragstart="onDragStart(event,${c.id})" ondragend="onDragEnd()" onclick="onCardClick(${c.id})">
     <div class="card-top">
       <span class="card-fn-badge fn-${c.fn}">${fn?fn.short:c.fn}</span>${stripe}${av}
     </div>
     <div class="card-title">${c.title}</div>
     ${nextActionHtml}
-    ${c.note?`<div class="card-note">${c.note}</div>`:''}
+    ${c.note?`<div class="card-note">${renderNote(c.note)}</div>`:''}
     <div class="card-footer">${linkHtml}${dueHtml}${ageHtml}<div class="card-pri" title="${c.priority}">${priDots(c.priority)}</div></div>
   </div>`;
 }
@@ -927,8 +938,9 @@ function renderAll(){renderPillars();renderFnList();renderActiveFilterBar();rend
 // ─────────────────────────────────────────
 // DRAG & DROP
 // ─────────────────────────────────────────
+function onCardClick(id){if(justDragged){justDragged=false;return;}openCardModal(id);}
 function onDragStart(e,id){dragId=id;setTimeout(()=>{const el=document.getElementById('card-'+id);if(el)el.classList.add('dragging');},0);}
-function onDragEnd(){dragId=null;dragColKey=null;document.querySelectorAll('.card').forEach(c=>c.classList.remove('dragging'));document.querySelectorAll('.cards-container').forEach(c=>{c.classList.remove('drag-over');c.querySelectorAll('.drop-indicator').forEach(d=>d.remove());});document.querySelectorAll('.column').forEach(c=>c.classList.remove('col-dragging','col-drag-over'));}
+function onDragEnd(){if(dragId!==null)justDragged=true;setTimeout(()=>justDragged=false,0);dragId=null;dragColKey=null;document.querySelectorAll('.card').forEach(c=>c.classList.remove('dragging'));document.querySelectorAll('.cards-container').forEach(c=>{c.classList.remove('drag-over');c.querySelectorAll('.drop-indicator').forEach(d=>d.remove());});document.querySelectorAll('.column').forEach(c=>c.classList.remove('col-dragging','col-drag-over'));}
 function onDragOver(e){
   e.preventDefault();
   const container=e.currentTarget;
@@ -1406,6 +1418,8 @@ document.getElementById('today-date').textContent =
   new Date().toLocaleDateString('en-CH',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 
 (async function init() {
+  // Restore persisted preferences
+  document.getElementById('hide-done-cb').checked = hideDone;
   // Fetch vault name for Obsidian links
   try {
     const cfg = await fetch('/config').then(r=>r.json());
