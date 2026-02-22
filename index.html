@@ -394,10 +394,9 @@
   }
   .card-link { font-size:9px; font-weight:600; color:var(--black); text-decoration:none; letter-spacing:0.04em; }
   .card-link:hover { color:var(--red); }
-  .card-pri { width:8px; height:8px; flex-shrink:0; border-radius:var(--border-radius); }
-  .pri-high { background:var(--red); }
-  .pri-medium { background:#E65100; }
-  .pri-low { background:var(--soft-gray); }
+  .card-pri { display:flex; gap:3px; align-items:center; flex-shrink:0; }
+  .pri-dot { width:6px; height:6px; border:1px solid var(--soft-gray); background:transparent; border-radius:50%; }
+  .pri-dot.filled { background:var(--red); border-color:var(--red); }
 
   .card-due {
     font-size:9px; font-weight:600; letter-spacing:0.04em;
@@ -406,6 +405,10 @@
   .card-due.due-overdue { color:#C62828; }
   .card-due.due-soon { color:#E65100; }
   .card-due.due-ok { color:var(--mid); }
+
+  .compact .card-top, .compact .card-note, .compact .card-footer { display:none; }
+  .compact .card { padding:6px 10px; }
+  .compact .card-title { margin-bottom:0; font-size:11px; }
 
   .empty-col {
     text-align:center; padding:24px 10px;
@@ -564,6 +567,10 @@
       <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--mid)">
         <input type="checkbox" id="hide-done-cb" onchange="toggleHideDone(this.checked)" style="cursor:pointer;margin:0">Hide Done
       </label>
+      <div class="filter-sep"></div>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--mid)">
+        <input type="checkbox" id="compact-cb" onchange="toggleCompact(this.checked)" style="cursor:pointer;margin:0">Compact
+      </label>
     </div>
 
     <div class="board" id="board"></div>
@@ -696,7 +703,7 @@ let cards = [];
 let nextCardId = 0;
 let dragId=null, dragColKey=null, dragFnKey=null;
 let fnOrder = Object.keys(FUNCTIONS);
-let activePillar='all', activeFn='all', activeOwner='all', activePri='all', hideDone=false;
+let activePillar='all', activeFn='all', activeOwner='all', activePri='all', hideDone=false, compactMode=false;
 let viewMode = 'stage';
 const STAGE_COLS = [
   {key:'now',     label:'Now',     color:'#2E7D32'},
@@ -806,6 +813,7 @@ function filterOwner(id,el){activeOwner=id;document.querySelectorAll('[data-owne
 function filterPri(pri,el){activePri=pri;document.querySelectorAll('[data-pri]').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderKanban();}
 function clearAllFilters(){activePillar='all';activeFn='all';renderAll();}
 function toggleHideDone(v){hideDone=v;renderKanban();}
+function toggleCompact(v){compactMode=v;renderKanban();}
 function setView(mode,el){viewMode=mode;document.querySelectorAll('[data-view]').forEach(p=>p.classList.remove('active'));el.classList.add('active');renderKanban();}
 
 // ─────────────────────────────────────────
@@ -845,11 +853,15 @@ function renderKanban() {
         <h2>${def.label}</h2>
         <span class="col-count">${filtered.length}</span>
       </div>
-      <div class="cards-container" ondragover="onDragOver(event)" ondrop="onDrop(event,'${def.key}')" ondragleave="onDragLeave(event)">${cardsHtml}</div>
+      <div class="cards-container${compactMode?' compact':''}" ondragover="onDragOver(event)" ondrop="onDrop(event,'${def.key}')" ondragleave="onDragLeave(event)">${cardsHtml}</div>
     </div>`;
   }).join('');
 }
 
+function priDots(pri) {
+  const n = pri==='high'?3:pri==='medium'?2:pri==='low'?1:0;
+  return [0,1,2].map(i=>`<span class="pri-dot${i<n?' filled':''}"></span>`).join('');
+}
 function cardHTML(c) {
   const fn = FUNCTIONS[c.fn];
   const pillar = pillars.find(p=>p.id===c.pillarId);
@@ -878,7 +890,7 @@ function cardHTML(c) {
     </div>
     <div class="card-title">${c.title}</div>
     ${c.note?`<div class="card-note">${c.note}</div>`:''}
-    <div class="card-footer">${linkHtml}${dueHtml}<div class="card-pri pri-${c.priority}" title="${c.priority}"></div></div>
+    <div class="card-footer">${linkHtml}${dueHtml}<div class="card-pri" title="${c.priority}">${priDots(c.priority)}</div></div>
   </div>`;
 }
 
