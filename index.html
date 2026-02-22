@@ -406,6 +406,16 @@
   .card-due.due-soon { color:#E65100; }
   .card-due.due-ok { color:var(--mid); }
 
+  .card-next-action {
+    font-size:11px; font-weight:600; color:var(--black); line-height:1.4;
+    margin-bottom:3px; padding:3px 6px; background:#FFF8E1; border-left:2px solid #F9A825;
+  }
+  .card-age { font-size:9px; font-weight:600; letter-spacing:0.04em; display:flex; align-items:center; gap:3px; }
+  .age-fresh  { color:#2E7D32; }
+  .age-normal { color:var(--mid); }
+  .age-stale  { color:#E65100; }
+  .age-stuck  { color:#C62828; }
+
   .compact .card-note { display:none; }
   .compact .card { padding:6px 10px; }
   .compact .card-title { margin-bottom:0; font-size:11px; }
@@ -560,9 +570,9 @@
       <div class="filter-sep"></div>
       <span class="filter-label">Priority</span>
       <button class="pill active" data-pri="all" onclick="filterPri('all',this)">All</button>
-      <button class="pill" data-pri="high" onclick="filterPri('high',this)">High</button>
-      <button class="pill" data-pri="medium" onclick="filterPri('medium',this)">Mid</button>
-      <button class="pill" data-pri="low" onclick="filterPri('low',this)">Low</button>
+      <button class="pill" data-pri="high" onclick="filterPri('high',this)" style="display:inline-flex;align-items:center;gap:2px"><span class="pri-dot filled"></span><span class="pri-dot filled"></span><span class="pri-dot filled"></span></button>
+      <button class="pill" data-pri="medium" onclick="filterPri('medium',this)" style="display:inline-flex;align-items:center;gap:2px"><span class="pri-dot filled"></span><span class="pri-dot filled"></span><span class="pri-dot"></span></button>
+      <button class="pill" data-pri="low" onclick="filterPri('low',this)" style="display:inline-flex;align-items:center;gap:2px"><span class="pri-dot filled"></span><span class="pri-dot"></span><span class="pri-dot"></span></button>
       <div class="filter-sep"></div>
       <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:9px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:var(--mid)">
         <input type="checkbox" id="hide-done-cb" onchange="toggleHideDone(this.checked)" style="cursor:pointer;margin:0">Hide Done
@@ -582,7 +592,8 @@
   <div class="modal">
     <h3 id="card-modal-h">Add Card</h3>
     <div class="form-row"><label>Title</label><input id="c-title" type="text" placeholder="What needs to happen?"></div>
-    <div class="form-row"><label>Note / Context</label><textarea id="c-note" placeholder="Blockers, context, next action…"></textarea></div>
+    <div class="form-row"><label>Next Action</label><input id="c-next-action" type="text" placeholder="What's the immediate next step?"></div>
+    <div class="form-row"><label>Note / Context</label><textarea id="c-note" placeholder="Blockers, context…"></textarea></div>
     <div class="two-col">
       <div class="form-row"><label>Function</label>
         <select id="c-fn"><option value="">— None —</option></select>
@@ -883,14 +894,31 @@ function cardHTML(c) {
     const label = diffDays < 0 ? `${-diffDays}d overdue` : diffDays === 0 ? 'Today' : diffDays === 1 ? 'Tomorrow' : `${diffDays}d`;
     dueHtml = `<span class="card-due ${cls}" title="${c.due}">${label}</span>`;
   }
+  let ageHtml = '';
+  if (c.movedAt && c.col !== 'done') {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const moved = new Date(c.movedAt + 'T00:00:00');
+    const ageDays = Math.max(0, Math.round((today - moved) / 86400000));
+    let ageLabel, ageCls;
+    if (ageDays >= 30) { ageLabel = Math.floor(ageDays/30) + 'mo'; }
+    else if (ageDays >= 14) { ageLabel = Math.floor(ageDays/7) + 'w'; }
+    else { ageLabel = ageDays + 'd'; }
+    if (ageDays <= 2) ageCls = 'age-fresh';
+    else if (ageDays <= 7) ageCls = 'age-normal';
+    else if (ageDays <= 14) ageCls = 'age-stale';
+    else ageCls = 'age-stuck';
+    ageHtml = `<span class="card-age ${ageCls}" title="In column ${ageDays} days">${ageLabel}</span>`;
+  }
+  const nextActionHtml = c.nextAction ? `<div class="card-next-action">\u25B8 ${c.nextAction}</div>` : '';
   return `<div class="card" id="card-${c.id}" draggable="true"
     ondragstart="onDragStart(event,${c.id})" ondragend="onDragEnd()" ondblclick="openCardModal(${c.id})">
     <div class="card-top">
       <span class="card-fn-badge fn-${c.fn}">${fn?fn.short:c.fn}</span>${stripe}${av}
     </div>
     <div class="card-title">${c.title}</div>
+    ${nextActionHtml}
     ${c.note?`<div class="card-note">${c.note}</div>`:''}
-    <div class="card-footer">${linkHtml}${dueHtml}<div class="card-pri" title="${c.priority}">${priDots(c.priority)}</div></div>
+    <div class="card-footer">${linkHtml}${dueHtml}${ageHtml}<div class="card-pri" title="${c.priority}">${priDots(c.priority)}</div></div>
   </div>`;
 }
 
@@ -929,6 +957,7 @@ function onDrop(e,targetKey){
   cards=cards.filter(c=>c.id!==dragId);
   // Update the correct field based on view mode
   const field = viewMode==='functions'?'fn':viewMode==='priority'?'priority':'col';
+  if(field==='col'&&card.col!==targetKey) card.movedAt=new Date().toISOString().slice(0,10);
   card[field]=targetKey;
   // Insert at position
   if(insertBeforeId!==null){const idx=cards.findIndex(c=>c.id===insertBeforeId);cards.splice(idx,0,card);}
@@ -1022,6 +1051,7 @@ function openCardModal(id){
   const c=id?cards.find(x=>x.id===id):null;
   document.getElementById('card-modal-h').textContent=c?'Edit Card':'Add Card';
   document.getElementById('c-title').value=c?c.title:'';
+  document.getElementById('c-next-action').value=c?c.nextAction:'';
   document.getElementById('c-note').value=c?c.note:'';
   populateFnSelect(c?c.fn:(activeFn!=='all'?activeFn:'operations'));
   document.getElementById('c-col').value=c?c.col:'now';
@@ -1039,15 +1069,24 @@ function openCardModal(id){
   document.getElementById('c-title').focus();
 }
 function closeCardModal(){document.getElementById('card-modal').classList.remove('open');}
+document.getElementById('card-modal').addEventListener('keydown',function(e){if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){e.preventDefault();saveCard();}if(e.key==='Escape'){e.preventDefault();closeCardModal();}});
 function saveCard(){
   const title=document.getElementById('c-title').value.trim();
   if(!title){document.getElementById('c-title').focus();return;}
+  const newCol=document.getElementById('c-col').value;
   const data={title,note:document.getElementById('c-note').value.trim(),fn:document.getElementById('c-fn').value,
-    ownerId:document.getElementById('c-owner').value,col:document.getElementById('c-col').value,
+    ownerId:document.getElementById('c-owner').value,col:newCol,
     priority:document.getElementById('c-priority').value,link:document.getElementById('c-link').value.trim(),
-    pillarId:document.getElementById('c-pillar').value,due:document.getElementById('c-due').value};
-  if(editingCardId) Object.assign(cards.find(c=>c.id===editingCardId),data);
-  else cards.push({id:++nextCardId,...data});
+    pillarId:document.getElementById('c-pillar').value,due:document.getElementById('c-due').value,
+    nextAction:document.getElementById('c-next-action').value.trim()};
+  if(editingCardId){
+    const existing=cards.find(c=>c.id===editingCardId);
+    if(existing.col!==newCol) data.movedAt=new Date().toISOString().slice(0,10);
+    Object.assign(existing,data);
+  } else {
+    const today=new Date().toISOString().slice(0,10);
+    cards.push({id:++nextCardId,movedAt:today,...data});
+  }
   closeCardModal();renderAll();scheduleSave();
 }
 function deleteCard(){
@@ -1106,6 +1145,7 @@ function openPillarModal(id){
   document.getElementById('p-name').focus();
 }
 function closePillarModal(){document.getElementById('pillar-modal').classList.remove('open');}
+document.getElementById('pillar-modal').addEventListener('keydown',function(e){if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){e.preventDefault();savePillar();}if(e.key==='Escape'){e.preventDefault();closePillarModal();}});
 function savePillar(){
   const name=document.getElementById('p-name').value.trim();
   if(!name){document.getElementById('p-name').focus();return;}
@@ -1177,7 +1217,9 @@ function buildBoardData() {
       owner: ownerMap[c.ownerId] || '', fn: c.fn || '',
       pillar: pillarMap[c.pillarId] || '',
       link: c.link || '', note: c.note || '',
-      due: c.due || ''
+      due: c.due || '',
+      nextAction: c.nextAction || '',
+      movedAt: c.movedAt || ''
     }));
   });
   return { pillars: boardPillars, owners: boardOwners, columns };
@@ -1231,7 +1273,9 @@ function applyBoardData(board, mtime) {
         fn: c.fn || '', ownerId: ownerByName[c.owner] || '',
         col, priority: c.priority || 'medium',
         link: c.link || '', pillarId: pillarByName[c.pillar] || '',
-        due: c.due || ''
+        due: c.due || '',
+        nextAction: c.nextAction || '',
+        movedAt: c.movedAt || new Date().toISOString().slice(0,10)
       });
     });
   });

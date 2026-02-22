@@ -108,10 +108,12 @@ def parse_board(text):
                     columns[col_key].append(current_card)
                 current_card = parse_card_line(line[2:])
             elif current_card and (line.startswith("  ") or line.startswith("\t")):
-                # Indented continuation = note
+                # Indented continuation
                 note_line = line.strip()
                 if note_line:
-                    if current_card.get("note"):
+                    if note_line.startswith(">> ") and not current_card.get("nextAction"):
+                        current_card["nextAction"] = note_line[3:]
+                    elif current_card.get("note"):
                         current_card["note"] += "\n" + note_line
                     else:
                         current_card["note"] = note_line
@@ -168,7 +170,13 @@ def parse_owner_line(text):
 
 def parse_card_line(text):
     """Parse: **Title** [priority] @Owner #function >Pillar [[link]]"""
-    card = {"title": "", "priority": "medium", "owner": "", "fn": "", "pillar": "", "link": "", "note": "", "due": ""}
+    card = {"title": "", "priority": "medium", "owner": "", "fn": "", "pillar": "", "link": "", "note": "", "due": "", "nextAction": "", "movedAt": ""}
+
+    # Extract ^YYYY-MM-DD movedAt date
+    m = re.search(r"\^(\d{4}-\d{2}-\d{2})", text)
+    if m:
+        card["movedAt"] = m.group(1)
+        text = text[: m.start()] + text[m.end() :]
 
     # Extract !YYYY-MM-DD due date
     m = re.search(r"!(\d{4}-\d{2}-\d{2})", text)
@@ -200,8 +208,8 @@ def parse_card_line(text):
         card["fn"] = m.group(1)
         text = text[: m.start()] + text[m.end() :]
 
-    # Extract >Pillar (greedy — takes everything remaining after >)
-    m = re.search(r">([\w][\w\s]*)", text)
+    # Extract >Pillar (everything after > until ** or end of string)
+    m = re.search(r">([^*]+)", text)
     if m:
         card["pillar"] = m.group(1).strip()
         text = text[: m.start()] + text[m.end() :]
@@ -245,6 +253,8 @@ def serialize_board(data):
         lines.append(f"## {col_title}")
         for c in cards:
             lines.append(serialize_card(c))
+            if c.get("nextAction"):
+                lines.append(f"  >> {c['nextAction']}")
             if c.get("note"):
                 for note_line in c["note"].split("\n"):
                     lines.append(f"  {note_line}")
@@ -271,6 +281,9 @@ def serialize_card(card):
 
     if card.get("due"):
         parts.append(f"!{card['due']}")
+
+    if card.get("movedAt"):
+        parts.append(f"^{card['movedAt']}")
 
     if card.get("link"):
         link = card["link"]
