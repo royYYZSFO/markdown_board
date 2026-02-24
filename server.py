@@ -13,13 +13,29 @@ import unicodedata
 from datetime import date
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, parse_qs
+from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 PORT = 7783
 DEFAULT_VAULT = Path.home() / "Documents" / "Obsidian"
 DEFAULT_BOARD_FILE = "Meticulous/Board.md"
 
+# Load .env.local if present (key=value, supports quotes, ignores comments)
+_env_path = Path(__file__).parent / ".env.local"
+if _env_path.exists():
+    for _line in _env_path.read_text().splitlines():
+        _line = _line.strip()
+        if not _line or _line.startswith("#"):
+            continue
+        if "=" in _line:
+            _k, _, _v = _line.partition("=")
+            os.environ.setdefault(_k.strip(), _v.strip().strip("'\""))
+
 CONFIG_PATH = Path(__file__).parent / "config.json"
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+CLAUDE_MODEL = "claude-sonnet-4-20250514"
+CLAUDE_API_URL = "https://api.anthropic.com/v1/messages"
 
 
 def load_config():
@@ -491,6 +507,116 @@ def write_brief(card_data):
     return f"[[{wiki_path}]]"
 
 
+# ─── AI Assist ─────────────────────────────────────────────────
+
+FN_LABELS = {
+    "finops": "Financial & Ops Plan", "marketing": "Marketing",
+    "operations": "Operations", "product": "Product",
+    "supplychain": "Supply Chain", "manufacturing": "Manufacturing",
+    "quality": "Quality", "fulfillment": "Fulfillment / Shipping",
+    "website": "Website", "software": "Software",
+    "support": "Customer Support", "roast": "Roast / Cafe Partners",
+    "ip": "IP", "accounting": "Accounting & Taxes", "legal": "Legal",
+}
+
+
+def read_brief_content(link):
+    """Read a brief file from the vault given a [[wiki link]]."""
+    vault, _ = load_config()
+    inner = link.strip().strip("[").strip("]")
+    if not inner:
+        return None
+    filepath = vault / (inner + ".md")
+    if filepath.exists():
+        return filepath.read_text(encoding="utf-8")
+    return None
+
+
+def build_system_prompt(card, brief_content, fn_responsibilities, pillar_desc):
+    """Build the system prompt for AI chat from card context."""
+    fn_label = FN_LABELS.get(card.get("fn", ""), card.get("fn", ""))
+
+    # Calculate age in column
+    age = ""
+    moved = card.get("movedAt", "")
+    if moved:
+        try:
+            from datetime import datetime
+            moved_date = datetime.strptime(moved, "%Y-%m-%d").date()
+            age = str((date.today() - moved_date).days)
+        except Exception:
+            pass
+
+    lines = [
+        "You are an AI assistant helping action a specific task on a priority board.",
+        "",
+        "## Card",
+        f"- Title: {card.get('title', '')}",
+        f"- Column: {card.get('col', '')} (current status)",
+        f"- Priority: {card.get('priority', '')}",
+        f"- Owner: {card.get('owner', '')}",
+        f"- Due: {card.get('due', '') or 'Not set'}",
+        f"- Function: {fn_label}",
+        f"- Pillar: {card.get('pillar', '')}",
+        f"- Next Action: {card.get('nextAction', '') or 'Not set'}",
+        f"- Note: {card.get('note', '') or 'None'}",
+    ]
+    if age:
+        lines.append(f"- In current column: {age} days")
+
+    if fn_responsibilities:
+        lines.append("")
+        lines.append("## Function Responsibilities")
+        for r in fn_responsibilities:
+            lines.append(f"- {r}")
+
+    if pillar_desc:
+        lines.append("")
+        lines.append("## Pillar")
+        lines.append(pillar_desc)
+
+    lines.append("")
+    lines.append("## Brief")
+    lines.append(brief_content if brief_content else "No brief linked to this card.")
+
+    lines.append("")
+    lines.append("---")
+    lines.append("Help the user take action on this task. You can:")
+    lines.append("- Draft emails, messages, or communications")
+    lines.append("- Write PRDs, project plans, or briefs")
+    lines.append("- Break down the task into concrete action steps")
+    lines.append("- Research questions and suggest approaches")
+    lines.append("- Draft any document the user needs")
+    lines.append("")
+    lines.append("Be direct and produce ready-to-use outputs. When drafting communications,")
+    lines.append("use a professional but human tone.")
+
+    return "\n".join(lines)
+
+
+def save_vault_file(rel_path, content):
+    """Save content as a .md file in the vault."""
+    vault, _ = load_config()
+    filepath = vault / rel_path
+    filepath.parent.mkdir(parents=True, exist_ok=True)
+    # Atomic write
+    fd, tmp = tempfile.mkstemp(dir=str(filepath.parent), suffix=".tmp")
+    closed = False
+    try:
+        os.write(fd, content.encode("utf-8"))
+        os.close(fd)
+        closed = True
+        os.replace(tmp, str(filepath))
+    except Exception:
+        if not closed:
+            try: os.close(fd)
+            except OSError: pass
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
+    return str(filepath)
+
+
 # ─── HTTP Handler ──────────────────────────────────────────────
 
 
@@ -519,7 +645,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if parsed.path == "/ping":
             vault, board_file = load_config()
-            self.send_json({"ok": True, "vault": str(vault), "board_file": board_file})
+            self.send_json({"ok": True, "vault": str(vault), "board_file": board_file, "hasApiKey": bool(ANTHROPIC_API_KEY)})
 
         elif parsed.path == "/api/board":
             data, mtime = read_board()
@@ -527,6 +653,12 @@ class Handler(BaseHTTPRequestHandler):
                 data = create_default_board()
                 mtime = board_path().stat().st_mtime
             self.send_json({"board": data, "mtime": mtime})
+
+        elif parsed.path == "/api/brief-content":
+            qs = parse_qs(parsed.query)
+            link = qs.get("link", [""])[0]
+            content = read_brief_content(link) if link else None
+            self.send_json({"content": content or "", "found": content is not None})
 
         elif parsed.path == "/config":
             vault, board_file = load_config()
@@ -580,6 +712,62 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e:
                 self.send_json({"error": str(e)}, 500)
 
+        elif parsed.path == "/api/ai/chat":
+            if not ANTHROPIC_API_KEY:
+                self.send_json({"error": "No API key configured"}, 403)
+                return
+            try:
+                data = json.loads(body)
+            except Exception:
+                self.send_json({"error": "Invalid JSON"}, 400)
+                return
+            try:
+                self._stream_ai_chat(data)
+            except Exception as e:
+                # If headers haven't been sent yet, send error JSON
+                try:
+                    self.send_json({"error": str(e)}, 500)
+                except Exception:
+                    pass
+
+        elif parsed.path == "/api/vault/save":
+            try:
+                data = json.loads(body)
+            except Exception:
+                self.send_json({"error": "Invalid JSON"}, 400)
+                return
+            try:
+                title = data.get("title", "untitled")
+                content = data.get("content", "")
+                # Use same brief numbering/naming as Create Brief
+                vault, _ = load_config()
+                briefs_dir = vault / "Meticulous" / "Briefs"
+                briefs_dir.mkdir(parents=True, exist_ok=True)
+                num = next_brief_number()
+                slug = slugify(title)
+                filename = f"brief_{num:02d}_{slug}.md"
+                filepath = briefs_dir / filename
+                # Atomic write
+                fd, tmp = tempfile.mkstemp(dir=str(briefs_dir), suffix=".tmp")
+                closed = False
+                try:
+                    os.write(fd, content.encode("utf-8"))
+                    os.close(fd)
+                    closed = True
+                    os.replace(tmp, str(filepath))
+                except Exception:
+                    if not closed:
+                        try: os.close(fd)
+                        except OSError: pass
+                    if os.path.exists(tmp):
+                        os.unlink(tmp)
+                    raise
+                wiki_path = f"Meticulous/Briefs/{filepath.stem}"
+                link = f"[[{wiki_path}]]"
+                self.send_json({"ok": True, "link": link})
+            except Exception as e:
+                self.send_json({"error": str(e)}, 500)
+
         elif parsed.path == "/config":
             try:
                 data = json.loads(body)
@@ -593,6 +781,98 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send_json({"error": "Not found"}, 404)
 
+    def _stream_ai_chat(self, data):
+        """Handle streaming AI chat via Claude API."""
+        messages = data.get("messages", [])
+        card = data.get("card", {})
+        brief_content = data.get("briefContent", "")
+        fn_responsibilities = data.get("fnResponsibilities", [])
+        pillar_desc = data.get("pillarDesc", "")
+
+        system_prompt = build_system_prompt(card, brief_content, fn_responsibilities, pillar_desc)
+
+        api_body = json.dumps({
+            "model": CLAUDE_MODEL,
+            "max_tokens": 4096,
+            "stream": True,
+            "system": system_prompt,
+            "messages": messages,
+        }).encode("utf-8")
+
+        req = Request(CLAUDE_API_URL, data=api_body, method="POST")
+        req.add_header("Content-Type", "application/json")
+        req.add_header("x-api-key", ANTHROPIC_API_KEY)
+        req.add_header("anthropic-version", "2023-06-01")
+
+        # Send SSE headers to client
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "close")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+
+        try:
+            resp = urlopen(req, timeout=60)
+            buf = ""
+            stream_done = False
+            while not stream_done:
+                chunk = resp.read(1024)
+                if not chunk:
+                    break
+                buf += chunk.decode("utf-8", errors="replace")
+                while "\n" in buf:
+                    line, buf = buf.split("\n", 1)
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if line.startswith("data: "):
+                        event_data = line[6:]
+                        if event_data.strip() == "[DONE]":
+                            stream_done = True
+                            break
+                        try:
+                            evt = json.loads(event_data)
+                            evt_type = evt.get("type", "")
+                            if evt_type == "content_block_delta":
+                                delta = evt.get("delta", {})
+                                text = delta.get("text", "")
+                                if text:
+                                    sse = f"data: {json.dumps({'text': text})}\n\n"
+                                    self.wfile.write(sse.encode("utf-8"))
+                                    self.wfile.flush()
+                            elif evt_type == "message_stop":
+                                stream_done = True
+                                break
+                            elif evt_type == "error":
+                                err_msg = evt.get("error", {}).get("message", "Unknown error")
+                                sse = f"data: {json.dumps({'error': err_msg})}\n\n"
+                                self.wfile.write(sse.encode("utf-8"))
+                                self.wfile.flush()
+                                stream_done = True
+                                break
+                        except json.JSONDecodeError:
+                            pass
+            resp.close()
+        except HTTPError as e:
+            err_body = e.read().decode("utf-8", errors="replace")
+            try:
+                err_json = json.loads(err_body)
+                err_msg = err_json.get("error", {}).get("message", str(e))
+            except Exception:
+                err_msg = f"API error {e.code}: {err_body[:200]}"
+            sse = f"data: {json.dumps({'error': err_msg})}\n\n"
+            self.wfile.write(sse.encode("utf-8"))
+            self.wfile.flush()
+        except Exception as e:
+            sse = f"data: {json.dumps({'error': str(e)})}\n\n"
+            self.wfile.write(sse.encode("utf-8"))
+            self.wfile.flush()
+
+        # Send done signal
+        self.wfile.write(b"data: [DONE]\n\n")
+        self.wfile.flush()
+
 
 if __name__ == "__main__":
     vault, board_file = load_config()
@@ -602,6 +882,10 @@ if __name__ == "__main__":
     print(f"  Vault:  {vault}")
     print(f"  Board:  {board_file}")
     print(f"  File:   {fp}")
+    if ANTHROPIC_API_KEY:
+        print(f"  AI:     Enabled (API key set)")
+    else:
+        print(f"  AI:     Disabled (set ANTHROPIC_API_KEY to enable)")
     print(f"  Ready. Open http://localhost:{PORT} in your browser.\n")
     server = HTTPServer(("localhost", PORT), Handler)
     try:
