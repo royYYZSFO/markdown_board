@@ -231,6 +231,8 @@
     position:relative;
   }
   .fn-row:last-child { border-bottom:none; }
+  .fn-row.fn-dragging { opacity:0.25; }
+  .fn-row.fn-drag-over { border-top:2px solid var(--red); padding-top:7px; }
   .fn-row:hover { background:var(--white); }
   .fn-row.sel { background:var(--white); border-left-color:var(--red); }
   .fn-dot { width:6px; height:6px; flex-shrink:0; border-radius:var(--border-radius); }
@@ -1126,7 +1128,7 @@ let owners = [];
 let pillars = [];
 let cards = [];
 let nextCardId = 0;
-let dragId=null, justDragged=false;
+let dragId=null, dragFnKey=null, justDragged=false;
 let fnOrder = [];
 let activePillar='all', activeFn='all', activeOwner='all', activePri='all', hideDone=localStorage.getItem('mb-hide-done')!=='0', compactMode=false;
 let viewMode = 'functions';
@@ -1251,8 +1253,10 @@ function renderFnList() {
     const fn = FUNCTIONS[key];
     if (!fn) return;
     const open = cards.filter(c=>c.fn===key&&c.col!=='done').length;
-    html += `<div class="fn-row ${activeFn===key?'sel':''}" data-fn-key="${key}"
-      onclick="setFn('${key}')">
+    html += `<div class="fn-row ${activeFn===key?'sel':''}" data-fn-key="${key}" draggable="true"
+      onclick="setFn('${key}')"
+      ondragstart="onFnRowDragStart(event,'${key}')" ondragend="onFnRowDragEnd()"
+      ondragover="onFnRowDragOver(event)" ondrop="onFnRowDrop(event,'${key}')" ondragleave="onFnRowDragLeave(event)">
       <div class="fn-dot dot-${key}"></div>
       <span class="fn-label">${fn.short}</span>
       ${open>0?`<span class="fn-badge">${open}</span>`:''}
@@ -1447,6 +1451,42 @@ function onDrop(e,targetKey){
   dragId=null;renderAll();scheduleSave();
 }
 
+// ── FN ROW DRAG (sidebar reorder) ──
+function onFnRowDragStart(e,key){
+  dragFnKey=key;
+  e.dataTransfer.effectAllowed='move';
+  e.stopPropagation();
+  setTimeout(()=>{const row=document.querySelector(`.fn-row[data-fn-key="${key}"]`);if(row)row.classList.add('fn-dragging');},0);
+}
+function onFnRowDragEnd(){
+  dragFnKey=null;
+  document.querySelectorAll('.fn-row').forEach(r=>r.classList.remove('fn-dragging','fn-drag-over'));
+}
+function onFnRowDragOver(e){
+  if(dragFnKey===null)return;
+  e.preventDefault();
+  e.stopPropagation();
+  const row=e.currentTarget;
+  if(row.dataset.fnKey===dragFnKey)return;
+  document.querySelectorAll('.fn-row').forEach(r=>r.classList.remove('fn-drag-over'));
+  row.classList.add('fn-drag-over');
+}
+function onFnRowDragLeave(e){
+  if(dragFnKey===null)return;
+  if(!e.currentTarget.contains(e.relatedTarget))e.currentTarget.classList.remove('fn-drag-over');
+}
+function onFnRowDrop(e,targetKey){
+  e.preventDefault();
+  e.stopPropagation();
+  if(dragFnKey===null||dragFnKey===targetKey)return;
+  const fromIdx=fnOrder.indexOf(dragFnKey);
+  const toIdx=fnOrder.indexOf(targetKey);
+  if(fromIdx===-1||toIdx===-1)return;
+  fnOrder.splice(fromIdx,1);
+  fnOrder.splice(toIdx,0,dragFnKey);
+  dragFnKey=null;
+  renderAll();scheduleSave();
+}
 
 // ─────────────────────────────────────────
 // CARD MODAL
