@@ -40,6 +40,9 @@ No build step, no package manager, no dependencies beyond Python 3 stdlib and a 
 ## Team
 - Roy | RY | #F0380F
 
+## Functions
+- fulfillment | Fulfillment / Shipping | #00695C
+
 ## Now
 - **Resolve Spanish customs import block** [high] @Roy #fulfillment >Delivery Excellence [[Meticulous/Shipping/Spain]]
   Coordinate with freight forwarder on HS codes and VAT documentation.
@@ -95,8 +98,8 @@ Four independent filter axes compose via AND logic: pillar, function (`fn`), own
 - CSS classes: kebab-case (`.pane-header`, `.col-now`)
 - JS functions: camelCase (`saveCard()`, `scheduleSave()`)
 - No classes/constructors — functional style with global state
-- Function-specific CSS uses `fn-{key}` and `dot-{key}` patterns for colors
+- Function-specific CSS is injected dynamically via `injectFunctionCSS()` using `fn-{key}` and `dot-{key}` patterns
 - Card IDs are numeric (ephemeral), owner IDs `o{n}`, pillar IDs `p{n}`
 - All CSS uses `--border-radius: 0px` (sharp corners by design)
-- FUNCTIONS constant is hardcoded in index.html (structural schema, not user data)
+- Functions are defined in the `## Functions` section of Board.md (key | label | color), auto-detected from card #tags if not declared
 - Atomic file writes via temp file + `os.replace()`

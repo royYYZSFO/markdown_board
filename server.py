@@ -61,6 +61,7 @@ def parse_board(text):
     """Parse Board.md into a JSON-friendly dict."""
     pillars = []
     owners = []
+    functions = []
     columns = {"now": [], "next": [], "waiting": [], "done": []}
 
     section = None
@@ -82,6 +83,8 @@ def parse_board(text):
                 section = "pillars"
             elif heading == "team":
                 section = "team"
+            elif heading == "functions":
+                section = "functions"
             elif heading in ("now",):
                 section = "cards"
                 col_key = "now"
@@ -116,6 +119,13 @@ def parse_board(text):
                 owners.append(owner)
             continue
 
+        # ── Functions section ──
+        if section == "functions" and line.startswith("- "):
+            func = parse_function_line(line[2:])
+            if func:
+                functions.append(func)
+            continue
+
         # ── Cards section ──
         if section == "cards" and col_key:
             if line.startswith("- "):
@@ -145,6 +155,7 @@ def parse_board(text):
     return {
         "pillars": pillars,
         "owners": owners,
+        "functions": functions,
         "columns": columns,
     }
 
@@ -181,6 +192,18 @@ def parse_owner_line(text):
         "name": parts[0],
         "initials": parts[1],
         "color": parts[2] if len(parts) >= 3 else "#1F1F1F",
+    }
+
+
+def parse_function_line(text):
+    """Parse: finops | Financial & Ops Plan | #B8A050"""
+    parts = [p.strip() for p in text.split("|")]
+    if len(parts) < 2:
+        return None
+    return {
+        "key": parts[0],
+        "label": parts[1],
+        "color": parts[2] if len(parts) >= 3 else "#8A8A88",
     }
 
 
@@ -259,6 +282,12 @@ def serialize_board(data):
     lines.append("## Team")
     for o in data.get("owners", []):
         lines.append(f"- {o['name']} | {o['initials']} | {o.get('color', '#1F1F1F')}")
+    lines.append("")
+
+    # Functions
+    lines.append("## Functions")
+    for f in data.get("functions", []):
+        lines.append(f"- {f['key']} | {f['label']} | {f.get('color', '#8A8A88')}")
     lines.append("")
 
     # Columns
@@ -359,6 +388,7 @@ def create_default_board():
         "owners": [
             {"name": "Roy", "initials": "RY", "color": "#F0380F"},
         ],
+        "functions": [],
         "columns": {
             "now": [
                 {"title": "Resolve Spanish customs import block", "priority": "high", "owner": "Roy", "fn": "fulfillment", "pillar": "Delivery Excellence", "link": "[[Meticulous/Shipping/Spain]]", "note": "Coordinate with freight forwarder on HS codes and VAT documentation."},
@@ -418,17 +448,17 @@ def render_brief_template(card_data):
     note = card_data.get("note", "")
     today = date.today().isoformat()
 
-    # Look up function label from key
-    fn_labels = {
-        "finops": "Financial & Ops Plan", "marketing": "Marketing",
-        "operations": "Operations", "product": "Product",
-        "supplychain": "Supply Chain", "manufacturing": "Manufacturing",
-        "quality": "Quality", "fulfillment": "Fulfillment / Shipping",
-        "website": "Website", "software": "Software",
-        "support": "Customer Support", "roast": "Roast / Cafe Partners",
-        "ip": "IP", "accounting": "Accounting & Taxes", "legal": "Legal",
-    }
-    fn_display = fn_labels.get(fn, fn.capitalize() if fn else "")
+    # Look up function label — try reading from current board data
+    fn_display = fn.replace("-", " ").replace("_", " ").title() if fn else ""
+    try:
+        board_data, _ = read_board()
+        if board_data:
+            for f in board_data.get("functions", []):
+                if f.get("key") == fn:
+                    fn_display = f.get("label", fn_display)
+                    break
+    except Exception:
+        pass
 
     lines = [
         f"# {title}",
@@ -509,15 +539,6 @@ def write_brief(card_data):
 
 # ─── AI Assist ─────────────────────────────────────────────────
 
-FN_LABELS = {
-    "finops": "Financial & Ops Plan", "marketing": "Marketing",
-    "operations": "Operations", "product": "Product",
-    "supplychain": "Supply Chain", "manufacturing": "Manufacturing",
-    "quality": "Quality", "fulfillment": "Fulfillment / Shipping",
-    "website": "Website", "software": "Software",
-    "support": "Customer Support", "roast": "Roast / Cafe Partners",
-    "ip": "IP", "accounting": "Accounting & Taxes", "legal": "Legal",
-}
 
 
 def read_brief_content(link):
@@ -532,9 +553,10 @@ def read_brief_content(link):
     return None
 
 
-def build_system_prompt(card, brief_content, fn_responsibilities, pillar_desc):
+def build_system_prompt(card, brief_content, fn_label, pillar_desc):
     """Build the system prompt for AI chat from card context."""
-    fn_label = FN_LABELS.get(card.get("fn", ""), card.get("fn", ""))
+    if not fn_label:
+        fn_label = card.get("fn", "")
 
     # Calculate age in column
     age = ""
@@ -563,12 +585,6 @@ def build_system_prompt(card, brief_content, fn_responsibilities, pillar_desc):
     ]
     if age:
         lines.append(f"- In current column: {age} days")
-
-    if fn_responsibilities:
-        lines.append("")
-        lines.append("## Function Responsibilities")
-        for r in fn_responsibilities:
-            lines.append(f"- {r}")
 
     if pillar_desc:
         lines.append("")
@@ -786,10 +802,10 @@ class Handler(BaseHTTPRequestHandler):
         messages = data.get("messages", [])
         card = data.get("card", {})
         brief_content = data.get("briefContent", "")
-        fn_responsibilities = data.get("fnResponsibilities", [])
+        fn_label = data.get("fnLabel", "")
         pillar_desc = data.get("pillarDesc", "")
 
-        system_prompt = build_system_prompt(card, brief_content, fn_responsibilities, pillar_desc)
+        system_prompt = build_system_prompt(card, brief_content, fn_label, pillar_desc)
 
         api_body = json.dumps({
             "model": CLAUDE_MODEL,

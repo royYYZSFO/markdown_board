@@ -231,8 +231,6 @@
     position:relative;
   }
   .fn-row:last-child { border-bottom:none; }
-  .fn-row.fn-dragging { opacity:0.25; }
-  .fn-row.fn-drag-over { border-top:2px solid var(--red); padding-top:7px; }
   .fn-row:hover { background:var(--white); }
   .fn-row.sel { background:var(--white); border-left-color:var(--red); }
   .fn-dot { width:6px; height:6px; flex-shrink:0; border-radius:var(--border-radius); }
@@ -263,14 +261,8 @@
   .fn-row:hover .fn-tooltip { display:block; }
   .fn-tooltip-title {
     font-size:9px; font-weight:700; letter-spacing:0.14em;
-    text-transform:uppercase; color:var(--red); margin-bottom:10px;
+    text-transform:uppercase; color:var(--red);
   }
-  .fn-tooltip ul { list-style:none; display:flex; flex-direction:column; gap:5px; }
-  .fn-tooltip li {
-    font-size:11px; color:rgba(255,255,255,0.6); line-height:1.5;
-    padding-left:12px; position:relative;
-  }
-  .fn-tooltip li::before { content:'—'; position:absolute; left:0; color:var(--red); font-size:9px; top:2px; }
 
   /* ── KANBAN AREA ── */
   .kanban-area { flex:1; display:flex; flex-direction:column; overflow:hidden; min-width:0; }
@@ -331,9 +323,6 @@
   .board { display:grid; grid-template-columns:repeat(4,1fr); flex:1; overflow-x:auto; overflow-y:hidden; }
   .column { display:flex; flex-direction:column; border-right:1px solid var(--divider); overflow:hidden; }
   .column:last-child { border-right:none; }
-  .column.col-dragging { opacity:0.3; }
-  .column.col-drag-over { border-left:2px solid var(--red); }
-
   .col-header {
     padding:0 14px; height:40px;
     display:flex; align-items:center; gap:8px;
@@ -432,23 +421,6 @@
     font-size:9px; font-weight:700; letter-spacing:0.12em;
     text-transform:uppercase; color:var(--soft-gray);
   }
-
-  /* ── FUNCTION COLOR MAP ── */
-  .fn-finops       { background:#F5F0DC; color:#5C4A00; } .dot-finops       { background:#B8A050; }
-  .fn-marketing    { background:#FFE8EC; color:#7A1535; } .dot-marketing    { background:var(--red); }
-  .fn-operations   { background:#E8EEF8; color:#1A3352; } .dot-operations   { background:#1565C0; }
-  .fn-product      { background:#E8F4E8; color:#1B4A1E; } .dot-product      { background:#2E7D32; }
-  .fn-supplychain  { background:#FFF0E8; color:#6B2A00; } .dot-supplychain  { background:#E65100; }
-  .fn-manufacturing{ background:#EEE8F8; color:#2E1A52; } .dot-manufacturing{ background:#6A1B9A; }
-  .fn-quality      { background:#F8F4E4; color:#4A3800; } .dot-quality      { background:#F9A825; }
-  .fn-fulfillment  { background:#E4F8F4; color:#004A3A; } .dot-fulfillment  { background:#00695C; }
-  .fn-website      { background:#F0F8E4; color:#3A4A00; } .dot-website      { background:#558B2F; }
-  .fn-software     { background:#E4F8F8; color:#004A4A; } .dot-software     { background:#00838F; }
-  .fn-support      { background:#FFF0E8; color:#4A2000; } .dot-support      { background:#BF360C; }
-  .fn-roast        { background:#F0E8F8; color:#2A004A; } .dot-roast        { background:#6A1B9A; }
-  .fn-ip           { background:#EEE8F8; color:#3D1A5C; } .dot-ip           { background:#9C27B0; }
-  .fn-accounting   { background:#E8F8E8; color:#004A00; } .dot-accounting   { background:#2E7D32; }
-  .fn-legal        { background:#F8E8E8; color:#4A0000; } .dot-legal        { background:#C62828; }
 
   /* ── AI WORKSPACE ── */
   .ai-workspace { display:none; position:fixed; inset:0; z-index:300; background:var(--white); flex-direction:column; }
@@ -1145,23 +1117,7 @@
 // ─────────────────────────────────────────
 // DATA
 // ─────────────────────────────────────────
-const FUNCTIONS = {
-  finops:        { label:'Financial & Ops Plan', short:'Fin/Ops',       responsibilities:['Set company budget, approve compensation','Own Financial and Operating Model','Determine manufacturing batch sizes & timing','Approve and sign EPW Purchase Orders','Allocate gross margin across manufacturing, expenses, new products'] },
-  marketing:     { label:'Marketing',            short:'Marketing',      responsibilities:['Drive new sales','Determine marketing strategy and focus areas','Define and maintain Brand','Drive awareness with influencers and community','Content creation'] },
-  operations:    { label:'Operations',           short:'Operations',     responsibilities:['Own data structure, systems and reporting'] },
-  product:       { label:'Product',              short:'Product',        responsibilities:['Prioritize product roadmap (Hardware, Software)','Decide on any product changes (Design, Components)'] },
-  supplychain:   { label:'Supply Chain',         short:'Supply Chain',   responsibilities:['Define and own supply chain software tools with EPW','Ensure 2 suppliers for each critical component','Ensure POs placed with sufficient lead-time for batch start dates','IQC: Ensure suppliers meet quality requirements','BOM Reduction: Lower cost on 1–3 high impact components per batch'] },
-  manufacturing: { label:'Manufacturing',        short:'Manufacturing',  responsibilities:['Define and own manufacturing software tools with EPW','Ensure batches start on time','Ensure sufficient component inventory without delays','Own SOP, jigs, space and layout for warehousing + assembly','Ensure 100% of units shipped meet quality bar','Ensure certification is current for all countries'] },
-  quality:       { label:'Quality',              short:'Quality',        responsibilities:['Determine QC testing SOP for finished product, sub-assemblies, components','Determine QC process (recording and inputting into system)'] },
-  fulfillment:   { label:'Fulfillment / Shipping',short:'Fulfillment',   responsibilities:['Select and negotiate fulfillment partner','Ensure customers receive machines on time','Coordinate with shipping partner on delays, damage and lost products','Ensure regulatory requirements met for each country'] },
-  website:       { label:'Website',              short:'Website',        responsibilities:['Decide on language, layout, conversion of website'] },
-  software:      { label:'Software',             short:'Software',       responsibilities:['Stable release for manufacturing image and customers','Deliver on software roadmap','Firmware, Dial App, iOS/Android/Web App'] },
-  support:       { label:'Customer Support',     short:'Support',        responsibilities:['Voice of the Customer in internal meetings','Handle support requests and backer communication','Coordinate product repairs and replacements'] },
-  roast:         { label:'Roast / Café Partners',short:'Roast/Café',     responsibilities:['Own relationships with Reseller and Referral partners','Drive sales through referral partners','Organize partner events'] },
-  ip:            { label:'IP',                   short:'IP',             responsibilities:['Register patents and trademarks','Litigation'] },
-  accounting:    { label:'Accounting & Taxes',   short:'Accounting',     responsibilities:['Ensure accurate books','Manage tax payments','Salaries and payments'] },
-  legal:         { label:'Legal',                short:'Legal',          responsibilities:['Manage corporate legal documents and status','Duvall Lawsuit'] },
-};
+let FUNCTIONS = {};
 
 const PILLAR_COLORS = ['#F0380F','#1F1F1F','#1565C0','#2E7D32','#6A1B9A','#E65100','#00695C','#C62828'];
 const EMOJIS = ['🚀','📦','🛠','💬','🌍','🤝','⭐','🔬','💡','🏆','🎯','📈','🔗','🧪','🏗','☕','🔥','💎','🌱','🎨'];
@@ -1170,8 +1126,8 @@ let owners = [];
 let pillars = [];
 let cards = [];
 let nextCardId = 0;
-let dragId=null, dragColKey=null, dragFnKey=null, justDragged=false;
-let fnOrder = Object.keys(FUNCTIONS);
+let dragId=null, justDragged=false;
+let fnOrder = [];
 let activePillar='all', activeFn='all', activeOwner='all', activePri='all', hideDone=localStorage.getItem('mb-hide-done')!=='0', compactMode=false;
 let viewMode = 'functions';
 const STAGE_COLS = [
@@ -1180,12 +1136,6 @@ const STAGE_COLS = [
   {key:'waiting', label:'Waiting', color:'#E65100'},
   {key:'done',    label:'Done',    color:'#D9D9D9'}
 ];
-const FN_COLORS = {
-  finops:'#B8A050', marketing:'#F0380F', operations:'#1565C0', product:'#2E7D32',
-  supplychain:'#E65100', manufacturing:'#6A1B9A', quality:'#F9A825', fulfillment:'#00695C',
-  website:'#558B2F', software:'#00838F', support:'#BF360C', roast:'#6A1B9A',
-  ip:'#9C27B0', accounting:'#2E7D32', legal:'#C62828'
-};
 const PRI_COLS = [
   {key:'high',   label:'High',   color:'#F0380F'},
   {key:'medium', label:'Medium', color:'#E65100'},
@@ -1197,6 +1147,71 @@ let selectedEmoji='🎯', selectedColor=PILLAR_COLORS[0];
 let vaultName = '';
 let standaloneMode = false;
 const STANDALONE_LS_KEY = 'meticulous-board-standalone';
+let lastInjectedFnOrder = '';
+
+// ─────────────────────────────────────────
+// FUNCTION REGISTRY
+// ─────────────────────────────────────────
+const FN_AUTO_PALETTE = [
+  '#B8A050','#F0380F','#1565C0','#2E7D32','#E65100','#6A1B9A',
+  '#F9A825','#00695C','#558B2F','#00838F','#BF360C','#9C27B0','#C62828'
+];
+
+function fnHashColor(key) {
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = ((h << 5) - h + key.charCodeAt(i)) | 0;
+  return FN_AUTO_PALETTE[Math.abs(h) % FN_AUTO_PALETTE.length];
+}
+
+function fnAutoLabel(key) {
+  return key.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function sanitizeFnKey(key) {
+  return key.replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
+function buildFunctionRegistry(boardFunctions, allCards) {
+  FUNCTIONS = {};
+  const order = [];
+  // 1. Seed from declared entries
+  (boardFunctions || []).forEach(f => {
+    const k = sanitizeFnKey(f.key);
+    if (!k) return;
+    FUNCTIONS[k] = { label: f.label, short: f.label, color: f.color || '#8A8A88' };
+    order.push(k);
+  });
+  // 2. Scan cards for unknown #tags
+  allCards.forEach(c => {
+    if (!c.fn) return;
+    const k = sanitizeFnKey(c.fn);
+    if (!k || FUNCTIONS[k]) return;
+    FUNCTIONS[k] = { label: fnAutoLabel(k), short: fnAutoLabel(k), color: fnHashColor(k) };
+    order.push(k);
+  });
+  fnOrder = order;
+}
+
+function injectFunctionCSS() {
+  const sig = fnOrder.join(',');
+  if (sig === lastInjectedFnOrder) return;
+  lastInjectedFnOrder = sig;
+  let css = '';
+  fnOrder.forEach(key => {
+    const fn = FUNCTIONS[key];
+    if (!fn) return;
+    const c = fn.color;
+    css += `.fn-${key}{background:${c}22;color:${c}}\n`;
+    css += `.dot-${key}{background:${c}}\n`;
+  });
+  let el = document.getElementById('fn-dynamic-css');
+  if (!el) {
+    el = document.createElement('style');
+    el.id = 'fn-dynamic-css';
+    document.head.appendChild(el);
+  }
+  el.textContent = css;
+}
 
 // ─────────────────────────────────────────
 // PILLARS
@@ -1236,16 +1251,13 @@ function renderFnList() {
     const fn = FUNCTIONS[key];
     if (!fn) return;
     const open = cards.filter(c=>c.fn===key&&c.col!=='done').length;
-    html += `<div class="fn-row ${activeFn===key?'sel':''}" data-fn-key="${key}" draggable="true"
-      onclick="setFn('${key}')"
-      ondragstart="onFnRowDragStart(event,'${key}')" ondragend="onFnRowDragEnd()"
-      ondragover="onFnRowDragOver(event)" ondrop="onFnRowDrop(event,'${key}')" ondragleave="onFnRowDragLeave(event)">
+    html += `<div class="fn-row ${activeFn===key?'sel':''}" data-fn-key="${key}"
+      onclick="setFn('${key}')">
       <div class="fn-dot dot-${key}"></div>
       <span class="fn-label">${fn.short}</span>
       ${open>0?`<span class="fn-badge">${open}</span>`:''}
       <div class="fn-tooltip">
         <div class="fn-tooltip-title">${fn.label}</div>
-        <ul>${fn.responsibilities.map(r=>`<li>${r}</li>`).join('')}</ul>
       </div>
     </div>`;
   });
@@ -1294,7 +1306,7 @@ function setView(mode,el){viewMode=mode;document.querySelectorAll('[data-view]')
 function getColumnDefs() {
   if (viewMode==='functions') {
     const usedFns = new Set(cards.map(c=>c.fn).filter(Boolean));
-    return fnOrder.filter(k=>usedFns.has(k)).map(k=>({key:k, label:FUNCTIONS[k].short, color:FN_COLORS[k]||'#8A8A88', field:'fn'}));
+    return fnOrder.filter(k=>usedFns.has(k)).map(k=>({key:k, label:FUNCTIONS[k].short, color:(FUNCTIONS[k]||{}).color||'#8A8A88', field:'fn'}));
   }
   if (viewMode==='priority') return PRI_COLS.map(c=>({...c, field:'priority'}));
   return (hideDone ? STAGE_COLS.filter(c=>c.key!=='done') : STAGE_COLS).map(c=>({...c, field:'col'}));
@@ -1318,9 +1330,8 @@ function renderKanban() {
     const cardsHtml = filtered.length===0
       ? '<div class="empty-col">No items</div>'
       : filtered.map(cardHTML).join('');
-    const colDrag = isFn ? `draggable="true" ondragstart="onColDragStart(event,'${def.key}')" ondragend="onColDragEnd()" style="cursor:grab"` : '';
-    return `<div class="column" data-col-key="${def.key}" ondragover="${isFn?'onColDragOver(event)':''}" ondrop="${isFn?`onColDrop(event,'${def.key}')`:''}" ondragleave="${isFn?'onColDragLeave(event)':''}">
-      <div class="col-header" style="border-top:2px solid ${def.color}" ${colDrag}>
+    return `<div class="column" data-col-key="${def.key}">
+      <div class="col-header" style="border-top:2px solid ${def.color}">
         <div class="kdot" style="background:${def.color}"></div>
         <h2>${def.label}</h2>
         <span class="col-count">${filtered.length}</span>
@@ -1399,7 +1410,7 @@ function renderAll(){renderPillars();renderFnList();renderActiveFilterBar();rend
 // ─────────────────────────────────────────
 function onCardClick(id){if(justDragged){justDragged=false;return;}openCardModal(id);}
 function onDragStart(e,id){dragId=id;setTimeout(()=>{const el=document.getElementById('card-'+id);if(el)el.classList.add('dragging');},0);}
-function onDragEnd(){if(dragId!==null)justDragged=true;setTimeout(()=>justDragged=false,0);dragId=null;dragColKey=null;document.querySelectorAll('.card').forEach(c=>c.classList.remove('dragging'));document.querySelectorAll('.cards-container').forEach(c=>{c.classList.remove('drag-over');c.querySelectorAll('.drop-indicator').forEach(d=>d.remove());});document.querySelectorAll('.column').forEach(c=>c.classList.remove('col-dragging','col-drag-over'));}
+function onDragEnd(){if(dragId!==null)justDragged=true;setTimeout(()=>justDragged=false,0);dragId=null;document.querySelectorAll('.card').forEach(c=>c.classList.remove('dragging'));document.querySelectorAll('.cards-container').forEach(c=>{c.classList.remove('drag-over');c.querySelectorAll('.drop-indicator').forEach(d=>d.remove());});}
 function onDragOver(e){
   e.preventDefault();
   const container=e.currentTarget;
@@ -1436,80 +1447,6 @@ function onDrop(e,targetKey){
   dragId=null;renderAll();scheduleSave();
 }
 
-// ── COLUMN DRAG (Functions view) ──
-function onColDragStart(e,key){
-  if(dragId!==null)return; // card drag in progress
-  dragColKey=key;
-  e.dataTransfer.effectAllowed='move';
-  e.stopPropagation();
-  setTimeout(()=>{const col=document.querySelector(`.column[data-col-key="${key}"]`);if(col)col.classList.add('col-dragging');},0);
-}
-function onColDragEnd(){
-  dragColKey=null;
-  document.querySelectorAll('.column').forEach(c=>{c.classList.remove('col-dragging','col-drag-over');});
-}
-function onColDragOver(e){
-  if(dragColKey===null)return;
-  e.preventDefault();
-  e.stopPropagation();
-  const col=e.currentTarget;
-  if(col.dataset.colKey===dragColKey)return;
-  document.querySelectorAll('.column').forEach(c=>c.classList.remove('col-drag-over'));
-  col.classList.add('col-drag-over');
-}
-function onColDragLeave(e){
-  if(dragColKey===null)return;
-  if(!e.currentTarget.contains(e.relatedTarget))e.currentTarget.classList.remove('col-drag-over');
-}
-function onColDrop(e,targetKey){
-  e.preventDefault();
-  e.stopPropagation();
-  if(dragColKey===null||dragColKey===targetKey)return;
-  const fromIdx=fnOrder.indexOf(dragColKey);
-  const toIdx=fnOrder.indexOf(targetKey);
-  if(fromIdx===-1||toIdx===-1)return;
-  fnOrder.splice(fromIdx,1);
-  fnOrder.splice(toIdx,0,dragColKey);
-  dragColKey=null;
-  renderAll();
-}
-
-// ── FN ROW DRAG (sidebar reorder) ──
-function onFnRowDragStart(e,key){
-  dragFnKey=key;
-  e.dataTransfer.effectAllowed='move';
-  e.stopPropagation();
-  setTimeout(()=>{const row=document.querySelector(`.fn-row[data-fn-key="${key}"]`);if(row)row.classList.add('fn-dragging');},0);
-}
-function onFnRowDragEnd(){
-  dragFnKey=null;
-  document.querySelectorAll('.fn-row').forEach(r=>r.classList.remove('fn-dragging','fn-drag-over'));
-}
-function onFnRowDragOver(e){
-  if(dragFnKey===null)return;
-  e.preventDefault();
-  e.stopPropagation();
-  const row=e.currentTarget;
-  if(row.dataset.fnKey===dragFnKey)return;
-  document.querySelectorAll('.fn-row').forEach(r=>r.classList.remove('fn-drag-over'));
-  row.classList.add('fn-drag-over');
-}
-function onFnRowDragLeave(e){
-  if(dragFnKey===null)return;
-  if(!e.currentTarget.contains(e.relatedTarget))e.currentTarget.classList.remove('fn-drag-over');
-}
-function onFnRowDrop(e,targetKey){
-  e.preventDefault();
-  e.stopPropagation();
-  if(dragFnKey===null||dragFnKey===targetKey)return;
-  const fromIdx=fnOrder.indexOf(dragFnKey);
-  const toIdx=fnOrder.indexOf(targetKey);
-  if(fromIdx===-1||toIdx===-1)return;
-  fnOrder.splice(fromIdx,1);
-  fnOrder.splice(toIdx,0,dragFnKey);
-  dragFnKey=null;
-  renderAll();
-}
 
 // ─────────────────────────────────────────
 // CARD MODAL
@@ -1524,7 +1461,7 @@ function openCardModal(id){
   document.getElementById('c-title').value=c?c.title:'';
   document.getElementById('c-next-action').value=c?c.nextAction:'';
   document.getElementById('c-note').value=c?c.note:'';
-  populateFnSelect(c?c.fn:(activeFn!=='all'?activeFn:'operations'));
+  populateFnSelect(c?c.fn:(activeFn!=='all'?activeFn:(fnOrder[0]||'')));
   document.getElementById('c-col').value=c?c.col:'now';
   document.getElementById('c-priority').value=c?c.priority:'medium';
   document.getElementById('c-link').value=c?c.link:'';
@@ -1675,7 +1612,7 @@ let aiMessages = [];
 let aiCardData = null;
 let aiBriefContent = '';
 let aiStreaming = false;
-let aiFnResponsibilities = [];
+let aiFnLabel = '';
 let aiPillarDesc = '';
 
 async function openAiWorkspace() {
@@ -1703,7 +1640,7 @@ async function openAiWorkspace() {
     link: document.getElementById('c-link').value.trim() || c.link
   };
 
-  aiFnResponsibilities = fnObj ? fnObj.responsibilities : [];
+  aiFnLabel = fnObj ? fnObj.label : '';
   aiPillarDesc = pillarObj ? pillarObj.desc : '';
 
   // Close card modal
@@ -1741,9 +1678,6 @@ async function openAiWorkspace() {
   }
   if (aiCardData.note) {
     ctxHtml += `<div class="ai-ctx-section"><div class="ai-ctx-label">Note</div><div class="ai-ctx-value">${aiCardData.note}</div></div>`;
-  }
-  if (aiFnResponsibilities.length > 0) {
-    ctxHtml += `<div class="ai-ctx-section"><div class="ai-ctx-label">Function Scope</div><div class="ai-ctx-value">${aiFnResponsibilities.map(r => '• ' + r).join('\n')}</div></div>`;
   }
   if (aiBriefContent) {
     ctxHtml += `<div class="ai-ctx-section" style="border-top:1px solid var(--divider);padding-top:14px;margin-top:8px"><div class="ai-ctx-label">Brief</div><div class="ai-ctx-brief">${escapeHtml(aiBriefContent)}</div></div>`;
@@ -1873,7 +1807,7 @@ async function sendAiMessage() {
         messages: aiMessages.filter(m => m.role === 'user' || m.role === 'assistant'),
         card: aiCardData,
         briefContent: aiBriefContent,
-        fnResponsibilities: aiFnResponsibilities,
+        fnLabel: aiFnLabel,
         pillarDesc: aiPillarDesc
       })
     });
@@ -2004,6 +1938,12 @@ function parseOwnerLine(text) {
   return { name: parts[0], initials: parts[1], color: parts[2] || '#1F1F1F' };
 }
 
+function parseFunctionLine(text) {
+  const parts = text.split('|').map(s => s.trim());
+  if (parts.length < 2) return null;
+  return { key: parts[0], label: parts[1], color: parts[2] || '#8A8A88' };
+}
+
 function parseCardLine(text) {
   const card = { title:'', priority:'medium', owner:'', fn:'', pillar:'', link:'', note:'', due:'', nextAction:'', movedAt:'' };
   let t = text;
@@ -2037,7 +1977,7 @@ function parseCardLine(text) {
 }
 
 function parseBoardMd(text) {
-  const result = { pillars: [], owners: [], columns: { now: [], next: [], waiting: [], done: [] } };
+  const result = { pillars: [], owners: [], functions: [], columns: { now: [], next: [], waiting: [], done: [] } };
   let section = null, colKey = null, currentCard = null;
   for (const rawLine of text.split('\n')) {
     const line = rawLine.trimEnd();
@@ -2046,6 +1986,7 @@ function parseBoardMd(text) {
       if (currentCard && colKey) { result.columns[colKey].push(currentCard); currentCard = null; }
       if (heading === 'pillars') { section = 'pillars'; }
       else if (heading === 'team') { section = 'team'; }
+      else if (heading === 'functions') { section = 'functions'; }
       else if (heading === 'now') { section = 'cards'; colKey = 'now'; }
       else if (heading === 'next up' || heading === 'next') { section = 'cards'; colKey = 'next'; }
       else if (heading === 'waiting') { section = 'cards'; colKey = 'waiting'; }
@@ -2062,6 +2003,11 @@ function parseBoardMd(text) {
     if (section === 'team' && line.startsWith('- ')) {
       const o = parseOwnerLine(line.slice(2));
       if (o) result.owners.push(o);
+      continue;
+    }
+    if (section === 'functions' && line.startsWith('- ')) {
+      const f = parseFunctionLine(line.slice(2));
+      if (f) result.functions.push(f);
       continue;
     }
     if (section === 'cards' && colKey) {
@@ -2112,6 +2058,11 @@ function serializeBoardMd(data) {
     lines.push('- ' + o.name + ' | ' + o.initials + ' | ' + (o.color || '#1F1F1F'));
   });
   lines.push('');
+  lines.push('## Functions');
+  (data.functions || []).forEach(f => {
+    lines.push('- ' + f.key + ' | ' + f.label + ' | ' + (f.color || '#8A8A88'));
+  });
+  lines.push('');
   const colHeadings = [['now','Now'],['next','Next Up'],['waiting','Waiting'],['done','Done']];
   const columns = data.columns || {};
   colHeadings.forEach(([key, title]) => {
@@ -2143,7 +2094,11 @@ function buildBoardData() {
       movedAt: c.movedAt || ''
     }));
   });
-  return { pillars: boardPillars, owners: boardOwners, columns };
+  const boardFunctions = fnOrder.map(k => {
+    const fn = FUNCTIONS[k];
+    return fn ? { key: k, label: fn.label, color: fn.color } : null;
+  }).filter(Boolean);
+  return { pillars: boardPillars, owners: boardOwners, functions: boardFunctions, columns };
 }
 
 function scheduleSave() {
@@ -2275,6 +2230,9 @@ function applyBoardData(board, mtime) {
     });
   });
   nextCardId = cardId + 1;
+  // Build function registry from declared + auto-detected, then inject CSS
+  buildFunctionRegistry(board.functions, cards);
+  injectFunctionCSS();
 }
 
 async function loadBoard() {
