@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Meticulous">
+<meta name="theme-color" content="#1F1F1F">
 <title>Meticulous — Priority Board</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -24,6 +28,7 @@
     font-family:'Noto Sans',sans-serif;
     color:var(--black);
     height:100vh;
+    height:100dvh;
     overflow:hidden;
     line-height:1.6;
   }
@@ -574,6 +579,333 @@
     font-size:10px; font-weight:700; color:white;
     border-radius:var(--border-radius); flex-shrink:0;
   }
+
+  /* ── MOBILE: bottom nav (hidden on desktop) ── */
+  .mobile-bottom-nav { display:none; }
+  .mobile-overflow-btn { display:none; }
+  .mobile-overflow-menu { display:none; }
+  .mobile-action-sheet { display:none; }
+
+  /* ══════════════════════════════════════════
+     MOBILE RESPONSIVE — iPhone Safari
+     ══════════════════════════════════════════ */
+  @media (max-width: 768px) {
+
+    body { overscroll-behavior:none; }
+
+    /* ── HEADER ── */
+    header {
+      height:48px;
+      padding:0 12px;
+      padding-top:env(safe-area-inset-top);
+    }
+    .hdr-isotype {
+      width:48px; height:48px; font-size:12px;
+      margin-left:-12px;
+    }
+    .hdr-wordmark { display:none; }
+    .hdr-subtitle { display:none; }
+    .today { display:none; }
+    #save-status { display:none; }
+
+    .hdr-right { gap:6px; }
+    .hdr-right .btn-secondary { display:none; }
+    .hdr-right .btn-primary { display:none; }
+
+    /* Show only + Card button on mobile (re-show it) */
+    .hdr-right .btn-secondary[onclick*="openCardModal"] { display:inline-flex; padding:0 12px; height:32px; font-size:9px; }
+
+    /* Mobile overflow button */
+    .mobile-overflow-btn {
+      display:inline-flex; align-items:center; justify-content:center;
+      background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15);
+      color:rgba(255,255,255,0.6); width:32px; height:32px; cursor:pointer;
+      font-size:16px; font-weight:700; border-radius:var(--border-radius);
+    }
+    .mobile-overflow-btn:hover { background:rgba(255,255,255,0.14); color:var(--white); }
+
+    /* Overflow dropdown */
+    .mobile-overflow-menu {
+      display:none; position:absolute; top:100%; right:12px;
+      background:var(--black); border:1px solid rgba(255,255,255,0.15);
+      z-index:150; min-width:160px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.3);
+    }
+    .mobile-overflow-menu.open { display:flex; flex-direction:column; }
+    .mobile-overflow-menu button {
+      background:none; border:none; border-bottom:1px solid rgba(255,255,255,0.1);
+      color:rgba(255,255,255,0.7); padding:14px 16px; text-align:left;
+      font-family:'Noto Sans',sans-serif; font-size:12px; font-weight:500;
+      cursor:pointer;
+    }
+    .mobile-overflow-menu button:last-child { border-bottom:none; }
+    .mobile-overflow-menu button:hover { background:rgba(255,255,255,0.08); color:var(--white); }
+
+    /* ── LAYOUT ── */
+    .app {
+      height:calc(100vh - 48px - 52px);
+      height:calc(100dvh - 48px - 52px - env(safe-area-inset-top));
+      flex-direction:column;
+    }
+
+    /* ── SIDEBARS → full-screen overlays ── */
+    #pane-pillars, #pane-functions {
+      display:none;
+      position:fixed;
+      top:48px;
+      top:calc(48px + env(safe-area-inset-top));
+      left:0; right:0;
+      bottom:52px;
+      bottom:calc(52px + env(safe-area-inset-bottom));
+      width:100% !important;
+      z-index:100;
+      border-right:none;
+    }
+    #pane-pillars.mobile-open, #pane-functions.mobile-open {
+      display:flex;
+    }
+
+    /* ── KANBAN → horizontal scroll-snap ── */
+    .kanban-area {
+      flex:1; min-width:0; min-height:0; overflow:hidden;
+    }
+    .board {
+      display:flex !important;
+      grid-template-columns:unset !important;
+      overflow-x:auto;
+      overflow-y:hidden;
+      scroll-snap-type:x mandatory;
+      -webkit-overflow-scrolling:touch;
+      flex:1;
+    }
+    .column {
+      min-width:100%;
+      max-width:100%;
+      scroll-snap-align:start;
+      flex-shrink:0;
+      border-right:none;
+    }
+
+    /* ── FILTER BAR ── */
+    .sub-filter-bar {
+      flex-wrap:wrap;
+      height:auto;
+      padding:8px 12px;
+      gap:4px;
+    }
+    .filter-sep { display:none; }
+    .filter-label {
+      width:100%;
+      margin-bottom:2px;
+      margin-right:0;
+    }
+    .filter-label:first-child { margin-top:0; }
+    .pill {
+      height:32px; line-height:32px;
+      padding:0 12px;
+      font-size:10px;
+    }
+    #hide-done-cb, #compact-cb { width:18px; height:18px; }
+
+    /* Active filter bar */
+    .active-filter-bar {
+      padding:6px 12px;
+      height:auto;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    .active-filter-chip {
+      font-size:11px;
+      padding:4px 10px;
+    }
+
+    /* ── MODALS → bottom sheet ── */
+    .modal-overlay {
+      align-items:flex-end !important;
+      justify-content:center !important;
+    }
+    .modal {
+      width:100% !important;
+      max-width:100%;
+      max-height:85vh;
+      border:none;
+      border-top:1px solid var(--black);
+      box-shadow:0 -4px 20px rgba(0,0,0,0.3);
+      padding:20px 16px;
+      padding-bottom:calc(20px + env(safe-area-inset-bottom));
+    }
+    .modal h3 { font-size:16px; margin-bottom:16px; }
+    .modal input, .modal select, .modal textarea {
+      font-size:16px; /* prevents iOS zoom */
+      padding:10px 12px;
+    }
+    .two-col {
+      grid-template-columns:1fr;
+    }
+    .modal-actions {
+      flex-wrap:wrap;
+      gap:10px;
+    }
+    .modal-actions .btn-cancel,
+    .modal-actions .btn-save {
+      padding:12px 18px;
+      font-size:12px;
+    }
+    .modal-actions .btn-brief,
+    .modal-actions .delete-link {
+      font-size:10px;
+      padding:10px 12px;
+    }
+
+    /* ── AI WORKSPACE ── */
+    .ai-topbar {
+      height:48px;
+      padding:0 12px;
+      padding-top:env(safe-area-inset-top);
+      gap:8px;
+    }
+    .ai-topbar-title { font-size:12px; }
+    .ai-back { font-size:9px; padding:6px 10px; }
+
+    .ai-body { flex-direction:column; }
+    .ai-context {
+      width:100%;
+      max-height:180px;
+      overflow-y:auto;
+      border-right:none;
+      border-bottom:1px solid var(--divider);
+      padding:12px;
+    }
+    .ai-chat { flex:1; min-height:0; }
+    .ai-messages { padding:12px; }
+    .ai-input-bar { padding:10px 12px; padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
+    .ai-input { font-size:16px; /* prevents iOS zoom */ }
+
+    /* ── CARD STYLING ── */
+    .card { padding:12px 14px; }
+    .card-title { font-size:14px; }
+    .card-note { font-size:12px; }
+    .card-fn-badge { font-size:10px; padding:3px 7px; }
+    .card-owner-av { width:24px; height:24px; font-size:9px; }
+    .card-link { font-size:10px; }
+    .card-due { font-size:10px; }
+    .card-age { font-size:10px; }
+    .card-next-action { font-size:12px; }
+
+    /* ── COLUMN HEADERS ── */
+    .col-header { height:44px; padding:0 14px; }
+    .col-header h2 { font-size:11px; }
+    .col-count { font-size:10px; }
+
+    /* ── PILLAR PANE on mobile ── */
+    .pr-name { font-size:13px; }
+    .pr-desc { font-size:11px; }
+    .pr-count { font-size:20px; }
+    .pillar-row { padding:14px 16px; }
+    .pr-edit { opacity:1; font-size:10px; padding:4px 10px; }
+
+    /* ── FUNCTION PANE on mobile ── */
+    .fn-row { padding:14px 16px; gap:12px; }
+    .fn-label { font-size:13px; }
+    .fn-badge { font-size:10px; padding:2px 8px; }
+    .fn-tooltip { display:none !important; }
+
+    /* ── TOUCH TARGETS ── */
+    .pillar-row { min-height:44px; }
+    .fn-row { min-height:44px; }
+
+    /* ── BOTTOM NAV ── */
+    .mobile-bottom-nav {
+      display:flex;
+      position:fixed;
+      bottom:0; left:0; right:0;
+      height:52px;
+      padding-bottom:env(safe-area-inset-bottom);
+      background:var(--black);
+      border-top:1px solid rgba(255,255,255,0.15);
+      z-index:110;
+      align-items:center;
+      justify-content:space-around;
+    }
+    .mobile-nav-btn {
+      flex:1; display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      gap:2px; background:none; border:none;
+      color:rgba(255,255,255,0.4); cursor:pointer;
+      font-family:'Noto Sans',sans-serif; font-size:9px;
+      font-weight:600; letter-spacing:0.08em; text-transform:uppercase;
+      padding:8px 0; height:52px;
+    }
+    .mobile-nav-btn.active { color:var(--white); }
+    .mobile-nav-btn svg { width:20px; height:20px; }
+
+    /* ── COLUMN DOTS INDICATOR ── */
+    .mobile-col-dots {
+      display:flex; justify-content:center; gap:6px;
+      padding:6px 0;
+      background:var(--beige);
+      border-bottom:1px solid var(--divider);
+    }
+    .mobile-col-dot {
+      width:8px; height:8px;
+      background:var(--soft-gray);
+      border-radius:50%;
+      transition:background 0.2s;
+    }
+    .mobile-col-dot.active { background:var(--black); }
+
+    /* ── ACTION SHEET ── */
+    .mobile-action-sheet {
+      display:none; position:fixed;
+      bottom:0; left:0; right:0;
+      background:var(--white);
+      border-top:1px solid var(--black);
+      z-index:200;
+      padding-bottom:env(safe-area-inset-bottom);
+      box-shadow:0 -4px 20px rgba(0,0,0,0.3);
+    }
+    .mobile-action-sheet.open { display:block; }
+    .mobile-action-sheet-header {
+      padding:16px; border-bottom:1px solid var(--divider);
+      font-size:14px; font-weight:700; color:var(--black);
+    }
+    .mobile-action-sheet-section {
+      padding:8px 0;
+      border-bottom:1px solid var(--divider);
+    }
+    .mobile-action-sheet-label {
+      padding:4px 16px;
+      font-size:9px; font-weight:700; letter-spacing:0.12em;
+      text-transform:uppercase; color:var(--mid);
+    }
+    .mobile-action-sheet button {
+      display:block; width:100%; text-align:left;
+      background:none; border:none;
+      padding:14px 16px;
+      font-family:'Noto Sans',sans-serif; font-size:14px;
+      font-weight:500; color:var(--black); cursor:pointer;
+    }
+    .mobile-action-sheet button:hover { background:var(--beige); }
+    .mobile-action-sheet button.active-col {
+      color:var(--red); font-weight:700;
+    }
+    .mobile-action-sheet-cancel {
+      padding:8px;
+    }
+    .mobile-action-sheet-cancel button {
+      text-align:center; font-weight:700;
+      color:var(--mid); font-size:12px;
+      letter-spacing:0.08em; text-transform:uppercase;
+    }
+
+    /* ── EMPTY COLUMN ── */
+    .empty-col { padding:32px 16px; font-size:10px; }
+
+    /* ── MISC ── */
+    .cards-container { padding:8px 10px; gap:8px; }
+    .pane-header { height:44px; padding:0 16px; }
+    .pane-title { font-size:10px; }
+  }
 </style>
 </head>
 <body>
@@ -588,10 +920,20 @@
   <div class="hdr-right">
     <span class="today" id="today-date"></span>
     <span id="save-status" style="font-size:9px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-right:12px;padding:3px 8px;color:rgba(255,255,255,0.35);cursor:default"></span>
+    <button class="btn btn-secondary standalone-btn" style="display:none" onclick="triggerImport()">Import</button>
+    <button class="btn btn-secondary standalone-btn" style="display:none" onclick="exportBoardMd()">Export</button>
     <button class="btn btn-secondary" onclick="document.getElementById('settings-modal').classList.add('open');loadSettingsModal()">Settings</button>
     <button class="btn btn-secondary" onclick="openCardModal()">+ Card</button>
     <button class="btn btn-secondary" onclick="document.getElementById('owner-modal').classList.add('open');renderOwnerModal()">Team</button>
     <button class="btn btn-primary" onclick="openPillarModal()">+ Pillar</button>
+    <button class="mobile-overflow-btn" onclick="toggleMobileOverflow(event)" aria-label="More options">⋯</button>
+    <div class="mobile-overflow-menu" id="mobile-overflow-menu">
+      <button class="standalone-mobile-btn" style="display:none" onclick="closeMobileOverflow();triggerImport()">Import Board.md</button>
+      <button class="standalone-mobile-btn" style="display:none" onclick="closeMobileOverflow();exportBoardMd()">Export Board.md</button>
+      <button onclick="closeMobileOverflow();document.getElementById('settings-modal').classList.add('open');loadSettingsModal()">Settings</button>
+      <button onclick="closeMobileOverflow();document.getElementById('owner-modal').classList.add('open');renderOwnerModal()">Manage Team</button>
+      <button onclick="closeMobileOverflow();openPillarModal()">+ Pillar</button>
+    </div>
   </div>
 </header>
 
@@ -729,6 +1071,8 @@
   </div>
 </div>
 
+<input type="file" id="import-file-input" accept=".md,.txt,text/plain" style="display:none" onchange="handleFileImport(this)">
+
 <!-- ════ OWNER MODAL ════ -->
 <div class="modal-overlay" id="owner-modal" onclick="closeOutside(event,'owner-modal')">
   <div class="modal">
@@ -760,6 +1104,40 @@
         <button class="ai-send" id="ai-send-btn" onclick="sendAiMessage()">Send</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ════ MOBILE BOTTOM NAV ════ -->
+<nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+  <button class="mobile-nav-btn active" id="mnav-board" onclick="mobileShowPane('board')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="10" rx="1"/></svg>
+    Board
+  </button>
+  <button class="mobile-nav-btn" id="mnav-pillars" onclick="mobileShowPane('pillars')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg>
+    Pillars
+  </button>
+  <button class="mobile-nav-btn" id="mnav-functions" onclick="mobileShowPane('functions')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="1.5" fill="currentColor"/><circle cx="14" cy="12" r="1.5" fill="currentColor"/><circle cx="10" cy="18" r="1.5" fill="currentColor"/></svg>
+    Functions
+  </button>
+</nav>
+
+<!-- ════ MOBILE ACTION SHEET ════ -->
+<div class="mobile-action-sheet" id="mobile-action-sheet">
+  <div class="mobile-action-sheet-header" id="action-sheet-title"></div>
+  <div class="mobile-action-sheet-section">
+    <div class="mobile-action-sheet-label">Move to</div>
+    <button onclick="mobileActionMove('now')">Now</button>
+    <button onclick="mobileActionMove('next')">Next Up</button>
+    <button onclick="mobileActionMove('waiting')">Waiting</button>
+    <button onclick="mobileActionMove('done')">Done</button>
+  </div>
+  <div class="mobile-action-sheet-section">
+    <button onclick="mobileActionEdit()">Edit Card</button>
+  </div>
+  <div class="mobile-action-sheet-cancel">
+    <button onclick="closeMobileActionSheet()">Cancel</button>
   </div>
 </div>
 
@@ -817,6 +1195,8 @@ let editingCardId=null, editingPillarId=null;
 let aiAvailable = false;
 let selectedEmoji='🎯', selectedColor=PILLAR_COLORS[0];
 let vaultName = '';
+let standaloneMode = false;
+const STANDALONE_LS_KEY = 'meticulous-board-standalone';
 
 // ─────────────────────────────────────────
 // PILLARS
@@ -1151,7 +1531,7 @@ function openCardModal(id){
   document.getElementById('c-due').value=c?c.due:'';
   document.getElementById('card-delete-btn').style.display=c?'block':'none';
   const briefBtn=document.getElementById('card-brief-btn');
-  briefBtn.style.display=c?'inline-block':'none';
+  briefBtn.style.display=(c&&!standaloneMode)?'inline-block':'none';
   briefBtn.textContent='Create Brief';
   briefBtn.disabled=false;
   document.getElementById('card-ai-btn').style.display=(c&&aiAvailable)?'inline-block':'none';
@@ -1606,6 +1986,146 @@ let saving = false;
 let nextPillarId = 0;
 let nextOwnerId = 0;
 
+// ─────────────────────────────────────────
+// CLIENT-SIDE BOARD.MD PARSER / SERIALIZER
+// ─────────────────────────────────────────
+function parsePillarLine(text) {
+  const parts = text.split('|').map(s => s.trim());
+  if (parts.length < 2) return null;
+  let icon = '', name = parts[0];
+  const m = parts[0].match(/^(\S+)\s+(.*)/);
+  if (m) { icon = m[1]; name = m[2]; }
+  return { icon, name, color: parts[1] || '#1F1F1F', desc: parts[2] || '' };
+}
+
+function parseOwnerLine(text) {
+  const parts = text.split('|').map(s => s.trim());
+  if (parts.length < 2) return null;
+  return { name: parts[0], initials: parts[1], color: parts[2] || '#1F1F1F' };
+}
+
+function parseCardLine(text) {
+  const card = { title:'', priority:'medium', owner:'', fn:'', pillar:'', link:'', note:'', due:'', nextAction:'', movedAt:'' };
+  let t = text;
+  let m;
+  // ^YYYY-MM-DD movedAt
+  m = t.match(/\^(\d{4}-\d{2}-\d{2})/);
+  if (m) { card.movedAt = m[1]; t = t.slice(0, m.index) + t.slice(m.index + m[0].length); }
+  // !YYYY-MM-DD due
+  m = t.match(/!(\d{4}-\d{2}-\d{2})/);
+  if (m) { card.due = m[1]; t = t.slice(0, m.index) + t.slice(m.index + m[0].length); }
+  // [[link]]
+  m = t.match(/\[\[(.+?)\]\]/);
+  if (m) { card.link = '[[' + m[1] + ']]'; t = t.slice(0, m.index) + t.slice(m.index + m[0].length); }
+  // [priority]
+  m = t.match(/\[(high|medium|low)\]/i);
+  if (m) { card.priority = m[1].toLowerCase(); t = t.slice(0, m.index) + t.slice(m.index + m[0].length); }
+  // @Owner
+  m = t.match(/@(\S+(?:\s+\S+)*?)(?=\s+[#>@\[]|$)/);
+  if (m) { card.owner = m[1].trim(); t = t.slice(0, m.index) + t.slice(m.index + m[0].length); }
+  // #function
+  m = t.match(/#(\S+)/);
+  if (m) { card.fn = m[1]; t = t.slice(0, m.index) + t.slice(m.index + m[0].length); }
+  // >Pillar
+  m = t.match(/>([^*]+)/);
+  if (m) { card.pillar = m[1].trim(); t = t.slice(0, m.index) + t.slice(m.index + m[0].length); }
+  // **Title**
+  m = t.match(/\*\*(.+?)\*\*/);
+  if (m) { card.title = m[1].trim(); }
+  else { card.title = t.trim().replace(/^-\s*/, '').trim(); }
+  return card;
+}
+
+function parseBoardMd(text) {
+  const result = { pillars: [], owners: [], columns: { now: [], next: [], waiting: [], done: [] } };
+  let section = null, colKey = null, currentCard = null;
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trimEnd();
+    if (line.startsWith('## ')) {
+      const heading = line.slice(3).trim().toLowerCase();
+      if (currentCard && colKey) { result.columns[colKey].push(currentCard); currentCard = null; }
+      if (heading === 'pillars') { section = 'pillars'; }
+      else if (heading === 'team') { section = 'team'; }
+      else if (heading === 'now') { section = 'cards'; colKey = 'now'; }
+      else if (heading === 'next up' || heading === 'next') { section = 'cards'; colKey = 'next'; }
+      else if (heading === 'waiting') { section = 'cards'; colKey = 'waiting'; }
+      else if (heading === 'done') { section = 'cards'; colKey = 'done'; }
+      else { section = null; }
+      continue;
+    }
+    if (line.startsWith('# ')) continue;
+    if (section === 'pillars' && line.startsWith('- ')) {
+      const p = parsePillarLine(line.slice(2));
+      if (p) result.pillars.push(p);
+      continue;
+    }
+    if (section === 'team' && line.startsWith('- ')) {
+      const o = parseOwnerLine(line.slice(2));
+      if (o) result.owners.push(o);
+      continue;
+    }
+    if (section === 'cards' && colKey) {
+      if (line.startsWith('- ')) {
+        if (currentCard) result.columns[colKey].push(currentCard);
+        currentCard = parseCardLine(line.slice(2));
+      } else if (currentCard && (line.startsWith('  ') || line.startsWith('\t'))) {
+        const noteLine = line.trim();
+        if (noteLine) {
+          if (noteLine.startsWith('>> ') && !currentCard.nextAction) {
+            currentCard.nextAction = noteLine.slice(3);
+          } else if (currentCard.note) {
+            currentCard.note += '\n' + noteLine;
+          } else {
+            currentCard.note = noteLine;
+          }
+        }
+      }
+      continue;
+    }
+  }
+  if (currentCard && colKey) result.columns[colKey].push(currentCard);
+  return result;
+}
+
+function serializeCardLine(card) {
+  const parts = ['- **' + card.title + '**'];
+  if (card.priority && card.priority !== 'medium') parts.push('[' + card.priority + ']');
+  if (card.owner) parts.push('@' + card.owner);
+  if (card.fn) parts.push('#' + card.fn);
+  if (card.pillar) parts.push('>' + card.pillar);
+  if (card.due) parts.push('!' + card.due);
+  if (card.movedAt) parts.push('^' + card.movedAt);
+  if (card.link) { parts.push(card.link.startsWith('[[') ? card.link : '[[' + card.link + ']]'); }
+  return parts.join(' ');
+}
+
+function serializeBoardMd(data) {
+  const lines = ['# Meticulous Board', ''];
+  lines.push('## Pillars');
+  (data.pillars || []).forEach(p => {
+    const desc = p.desc ? ' | ' + p.desc : '';
+    lines.push('- ' + (p.icon || '\uD83C\uDFAF') + ' ' + p.name + ' | ' + (p.color || '#1F1F1F') + desc);
+  });
+  lines.push('');
+  lines.push('## Team');
+  (data.owners || []).forEach(o => {
+    lines.push('- ' + o.name + ' | ' + o.initials + ' | ' + (o.color || '#1F1F1F'));
+  });
+  lines.push('');
+  const colHeadings = [['now','Now'],['next','Next Up'],['waiting','Waiting'],['done','Done']];
+  const columns = data.columns || {};
+  colHeadings.forEach(([key, title]) => {
+    lines.push('## ' + title);
+    (columns[key] || []).forEach(c => {
+      lines.push(serializeCardLine(c));
+      if (c.nextAction) lines.push('  >> ' + c.nextAction);
+      if (c.note) c.note.split('\n').forEach(nl => lines.push('  ' + nl));
+    });
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+
 function buildBoardData() {
   const ownerMap = Object.fromEntries(owners.map(o => [o.id, o.name]));
   const pillarMap = Object.fromEntries(pillars.map(p => [p.id, p.name]));
@@ -1628,7 +2148,7 @@ function buildBoardData() {
 
 function scheduleSave() {
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveToServer, 300);
+  saveTimer = setTimeout(standaloneMode ? saveToLocalStorage : saveToServer, 300);
 }
 
 async function saveToServer() {
@@ -1651,6 +2171,80 @@ async function saveToServer() {
   } finally {
     saving = false;
   }
+}
+
+// ─────────────────────────────────────────
+// STANDALONE PERSISTENCE
+// ─────────────────────────────────────────
+function saveToLocalStorage() {
+  saveTimer = null;
+  const status = document.getElementById('save-status');
+  try {
+    localStorage.setItem(STANDALONE_LS_KEY, JSON.stringify(buildBoardData()));
+    if (status) { status.textContent = 'Saved'; status.style.color = '#2E7D32'; setTimeout(() => { status.textContent = ''; }, 2000); }
+  } catch(e) {
+    console.warn('localStorage save failed:', e);
+    if (status) { status.textContent = 'Save failed'; status.style.color = '#C62828'; }
+  }
+}
+
+function loadFromLocalStorage() {
+  const raw = localStorage.getItem(STANDALONE_LS_KEY);
+  if (raw) {
+    try {
+      const board = JSON.parse(raw);
+      applyBoardData(board, 0);
+      return true;
+    } catch(e) { console.warn('Failed to parse standalone data:', e); }
+  }
+  // Empty board
+  applyBoardData({ pillars: [], owners: [], columns: { now: [], next: [], waiting: [], done: [] } }, 0);
+  return false;
+}
+
+function triggerImport() {
+  document.getElementById('import-file-input').click();
+}
+
+function handleFileImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (cards.length > 0 && !confirm('This will replace your current board. Continue?')) { input.value = ''; return; }
+  // Back up current board before replacing
+  try { localStorage.setItem(STANDALONE_LS_KEY + '-backup', JSON.stringify(buildBoardData())); } catch(e) {}
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const board = parseBoardMd(e.target.result);
+    applyBoardData(board, 0);
+    renderOwnerPills(); renderAll();
+    scheduleSave();
+  };
+  reader.onerror = function() { alert('Could not read the file.'); };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+function exportBoardMd() {
+  const md = serializeBoardMd(buildBoardData());
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Board.md';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function updateStandaloneUI() {
+  document.querySelector('.hdr-subtitle').textContent = 'Standalone Mode';
+  // Hide Settings button (vault config is meaningless without server)
+  const settingsBtn = document.querySelector('.hdr-right .btn-secondary[onclick*="settings-modal"]');
+  if (settingsBtn) settingsBtn.style.display = 'none';
+  // Hide settings in mobile overflow menu
+  const mobileSettingsBtn = document.querySelector('#mobile-overflow-menu button[onclick*="settings-modal"]');
+  if (mobileSettingsBtn) mobileSettingsBtn.style.display = 'none';
+  // Show import/export buttons
+  document.querySelectorAll('.standalone-btn').forEach(el => el.style.display = '');
+  document.querySelectorAll('.standalone-mobile-btn').forEach(el => el.style.display = '');
 }
 
 function applyBoardData(board, mtime) {
@@ -1802,6 +2396,127 @@ async function migrateFromLocalStorage() {
 }
 
 // ─────────────────────────────────────────
+// MOBILE
+// ─────────────────────────────────────────
+const isMobile = () => window.matchMedia('(max-width:768px)').matches;
+let mobileActivePane = 'board';
+let longPressTimer = null;
+let longPressCardId = null;
+let touchMoved = false;
+
+function mobileShowPane(pane) {
+  mobileActivePane = pane;
+  const pillars = document.getElementById('pane-pillars');
+  const fns = document.getElementById('pane-functions');
+  pillars.classList.remove('mobile-open');
+  fns.classList.remove('mobile-open');
+  document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+  if (pane === 'pillars') {
+    pillars.classList.add('mobile-open');
+    document.getElementById('mnav-pillars').classList.add('active');
+  } else if (pane === 'functions') {
+    fns.classList.add('mobile-open');
+    document.getElementById('mnav-functions').classList.add('active');
+  } else {
+    document.getElementById('mnav-board').classList.add('active');
+  }
+}
+
+function toggleMobileOverflow(e) {
+  e.stopPropagation();
+  const menu = document.getElementById('mobile-overflow-menu');
+  menu.classList.toggle('open');
+}
+function closeMobileOverflow() {
+  document.getElementById('mobile-overflow-menu').classList.remove('open');
+}
+document.addEventListener('click', function(e) {
+  const menu = document.getElementById('mobile-overflow-menu');
+  if (menu && !menu.contains(e.target) && !e.target.classList.contains('mobile-overflow-btn')) {
+    menu.classList.remove('open');
+  }
+});
+
+// Long-press for card action sheet
+function onCardTouchStart(e, id) {
+  touchMoved = false;
+  longPressCardId = id;
+  longPressTimer = setTimeout(function() {
+    if (!touchMoved) openMobileActionSheet(id);
+  }, 500);
+}
+function onCardTouchMove() {
+  touchMoved = true;
+  if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+}
+function onCardTouchEnd() {
+  if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+}
+
+function openMobileActionSheet(id) {
+  const c = cards.find(x => x.id === id);
+  if (!c) return;
+  longPressCardId = id;
+  document.getElementById('action-sheet-title').textContent = c.title;
+  // Highlight current column
+  const sheet = document.getElementById('mobile-action-sheet');
+  sheet.querySelectorAll('.mobile-action-sheet-section:first-of-type button').forEach(btn => {
+    const col = btn.getAttribute('onclick').match(/'(\w+)'/);
+    if (col && col[1] === c.col) btn.classList.add('active-col');
+    else btn.classList.remove('active-col');
+  });
+  sheet.classList.add('open');
+}
+function closeMobileActionSheet() {
+  document.getElementById('mobile-action-sheet').classList.remove('open');
+  longPressCardId = null;
+}
+function mobileActionMove(col) {
+  if (longPressCardId === null) return;
+  const c = cards.find(x => x.id === longPressCardId);
+  if (c && c.col !== col) {
+    c.movedAt = new Date().toISOString().slice(0, 10);
+    c.col = col;
+    renderAll(); scheduleSave();
+  }
+  closeMobileActionSheet();
+}
+function mobileActionEdit() {
+  const id = longPressCardId;
+  closeMobileActionSheet();
+  if (id !== null) openCardModal(id);
+}
+
+// Column scroll dots
+function initMobileColumnDots() {
+  if (!isMobile()) return;
+  const board = document.getElementById('board');
+  if (!board) return;
+  // Remove existing dots
+  const existing = document.querySelector('.mobile-col-dots');
+  if (existing) existing.remove();
+  const cols = board.querySelectorAll('.column');
+  if (cols.length <= 1) return;
+  const dotsDiv = document.createElement('div');
+  dotsDiv.className = 'mobile-col-dots';
+  cols.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'mobile-col-dot' + (i === 0 ? ' active' : '');
+    dotsDiv.appendChild(dot);
+  });
+  board.parentNode.insertBefore(dotsDiv, board);
+
+  board.addEventListener('scroll', function() {
+    const scrollLeft = board.scrollLeft;
+    const colWidth = board.clientWidth;
+    const activeIdx = Math.round(scrollLeft / colWidth);
+    dotsDiv.querySelectorAll('.mobile-col-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === activeIdx);
+    });
+  }, { passive: true });
+}
+
+// ─────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────
 document.getElementById('today-date').textContent =
@@ -1810,26 +2525,38 @@ document.getElementById('today-date').textContent =
 (async function init() {
   // Restore persisted preferences
   document.getElementById('hide-done-cb').checked = hideDone;
-  // Fetch vault name for Obsidian links + check AI availability
+  // Detect server availability
+  let serverOk = false;
   try {
-    const cfg = await fetch('/config').then(r=>r.json());
-    if (cfg.vault) { const parts = cfg.vault.replace(/\/+$/,'').split('/'); vaultName = parts[parts.length-1]; }
+    const r = await fetch('/ping', { signal: AbortSignal.timeout(1500) });
+    if (r.ok) {
+      const ping = await r.json();
+      aiAvailable = !!ping.hasApiKey;
+      serverOk = true;
+    }
   } catch(e) {}
-  try {
-    const ping = await fetch('/ping').then(r=>r.json());
-    aiAvailable = !!ping.hasApiKey;
-  } catch(e) {}
-  // Try to migrate old localStorage data first
-  const migrated = await migrateFromLocalStorage();
-  // Load board from server
-  const loaded = await loadBoard();
-  if (!loaded) {
-    console.warn('Could not load board from server. Is the server running?');
+
+  if (serverOk) {
+    // ── SERVER MODE (unchanged) ──
+    try {
+      const cfg = await fetch('/config').then(r=>r.json());
+      if (cfg.vault) { const parts = cfg.vault.replace(/\/+$/,'').split('/'); vaultName = parts[parts.length-1]; }
+    } catch(e) {}
+    await migrateFromLocalStorage();
+    const loaded = await loadBoard();
+    if (!loaded) console.warn('Could not load board from server.');
+    renderOwnerPills();
+    renderAll();
+    setInterval(pollForChanges, 3000);
+  } else {
+    // ── STANDALONE MODE ──
+    standaloneMode = true;
+    aiAvailable = false;
+    loadFromLocalStorage();
+    renderOwnerPills();
+    renderAll();
+    updateStandaloneUI();
   }
-  renderOwnerPills();
-  renderAll();
-  // Poll for external changes (Obsidian edits) every 3 seconds
-  setInterval(pollForChanges, 3000);
 })();
 
 </script>
