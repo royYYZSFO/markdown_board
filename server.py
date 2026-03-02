@@ -62,7 +62,7 @@ def parse_board(text):
     pillars = []
     owners = []
     functions = []
-    columns = {"now": [], "next": [], "waiting": [], "done": []}
+    columns = {"inbox": [], "now": [], "next": [], "waiting": [], "done": []}
 
     section = None
     current_card = None
@@ -85,6 +85,9 @@ def parse_board(text):
                 section = "team"
             elif heading == "functions":
                 section = "functions"
+            elif heading in ("inbox",):
+                section = "cards"
+                col_key = "inbox"
             elif heading in ("now",):
                 section = "cards"
                 col_key = "now"
@@ -291,7 +294,7 @@ def serialize_board(data):
     lines.append("")
 
     # Columns
-    col_headings = [("now", "Now"), ("next", "Next Up"), ("waiting", "Waiting"), ("done", "Done")]
+    col_headings = [("inbox", "Inbox"), ("now", "Now"), ("next", "Next Up"), ("waiting", "Waiting"), ("done", "Done")]
     columns = data.get("columns", {})
     for col_key, col_title in col_headings:
         cards = columns.get(col_key, [])

@@ -321,6 +321,38 @@
   .pill:hover { background:var(--white); color:var(--black); border-color:var(--divider); }
   .pill.active { background:var(--black); color:var(--white); border-color:var(--black); }
 
+  /* checklist items */
+  .checklist-item {
+    display:flex; align-items:flex-start; gap:4px; cursor:pointer;
+    line-height:1.4;
+  }
+  .checklist-item input[type="checkbox"] {
+    margin-top:2px; cursor:pointer; flex-shrink:0;
+  }
+  .checklist-item s { color:var(--mid); }
+
+  /* quick-add bar */
+  .quick-add-bar {
+    padding:0 16px; height:36px;
+    display:flex; align-items:center; gap:8px;
+    border-bottom:1px solid var(--divider);
+    flex-shrink:0; background:var(--white);
+  }
+  .quick-add-label {
+    font-size:14px; font-weight:700; color:var(--mid); flex-shrink:0;
+  }
+  #quick-add-input {
+    flex:1; border:none; outline:none; background:transparent;
+    font-family:'Noto Sans',sans-serif; font-size:12px; color:var(--black);
+    height:100%;
+  }
+  #quick-add-input::placeholder { color:var(--soft-gray); font-size:11px; }
+  .quick-add-hint {
+    font-family:'Noto Sans',sans-serif; font-size:9px; font-weight:600;
+    color:var(--soft-gray); border:1px solid var(--divider);
+    padding:1px 5px; border-radius:3px; flex-shrink:0;
+  }
+
   /* ── BOARD ── */
   .board { display:grid; grid-template-columns:repeat(4,1fr); flex:1; overflow-x:auto; overflow-y:hidden; }
   .column { display:flex; flex-direction:column; border-right:1px solid var(--divider); overflow:hidden; }
@@ -660,6 +692,10 @@
       border-right:none;
     }
 
+    /* ── QUICK ADD ── */
+    .quick-add-bar { padding:0 12px; }
+    .quick-add-hint { display:none; }
+
     /* ── FILTER BAR ── */
     .sub-filter-bar {
       flex-wrap:wrap;
@@ -928,6 +964,12 @@
   <!-- ══ PANE 3: KANBAN ══ -->
   <div class="kanban-area">
 
+    <div class="quick-add-bar">
+      <span class="quick-add-label">+</span>
+      <input type="text" id="quick-add-input" placeholder="Quick add — type title, #function, @owner, [high], !2026-04-01 then Enter" autocomplete="off">
+      <kbd class="quick-add-hint">n</kbd>
+    </div>
+
     <div class="active-filter-bar" id="active-filter-bar" style="display:none">
       <span class="active-filter-label">Viewing</span>
       <span id="active-filter-chips" style="display:flex;gap:6px;flex-wrap:wrap"></span>
@@ -981,6 +1023,7 @@
     <div class="two-col">
       <div class="form-row"><label>Column</label>
         <select id="c-col">
+          <option value="inbox">Inbox</option>
           <option value="now">Now</option>
           <option value="next">Next Up</option>
           <option value="waiting">Waiting</option>
@@ -1102,6 +1145,7 @@
   <div class="mobile-action-sheet-header" id="action-sheet-title"></div>
   <div class="mobile-action-sheet-section">
     <div class="mobile-action-sheet-label">Move to</div>
+    <button onclick="mobileActionMove('inbox')">Inbox</button>
     <button onclick="mobileActionMove('now')">Now</button>
     <button onclick="mobileActionMove('next')">Next Up</button>
     <button onclick="mobileActionMove('waiting')">Waiting</button>
@@ -1133,6 +1177,7 @@ let fnOrder = [];
 let activePillar='all', activeFn='all', activeOwner='all', activePri='all', hideDone=localStorage.getItem('mb-hide-done')!=='0', compactMode=false;
 let viewMode = 'functions';
 const STAGE_COLS = [
+  {key:'inbox',   label:'Inbox',   color:'#8A8A88'},
   {key:'now',     label:'Now',     color:'#2E7D32'},
   {key:'next',    label:'Next Up', color:'#1565C0'},
   {key:'waiting', label:'Waiting', color:'#E65100'},
@@ -1345,11 +1390,32 @@ function renderKanban() {
   }).join('');
 }
 
-function renderNote(text) {
+function renderNote(text, cardId) {
   let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   s = s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  // Checklist items: - [ ] and - [x]
+  let checkIdx = 0;
+  s = s.replace(/(^|\n)- \[([ xX])\] (.+?)(?=\n|$)/g, function(match, pre, checked, label) {
+    const i = checkIdx++;
+    const isChecked = checked.toLowerCase() === 'x';
+    return `${pre}<label class="checklist-item" onclick="event.stopPropagation()"><input type="checkbox" ${isChecked?'checked ':''} onchange="toggleChecklist(${cardId},${i},this.checked)">${isChecked?'<s>'+label+'</s>':label}</label>`;
+  });
+  // Regular bullet items
   s = s.replace(/(^|\n)- /g,'$1\u2022 ');
   return s;
+}
+function toggleChecklist(cardId, checkIdx, checked) {
+  const card = cards.find(c => c.id === cardId);
+  if (!card || !card.note) return;
+  let idx = 0;
+  card.note = card.note.replace(/^(- \[)([ xX])(\] .+)$/gm, function(match, pre, state, rest) {
+    if (idx++ === checkIdx) return pre + (checked ? 'x' : ' ') + rest;
+    return match;
+  });
+  // Re-render just this card
+  const el = document.getElementById('card-' + cardId);
+  if (el) { el.outerHTML = cardHTML(card); }
+  scheduleSave();
 }
 function priDots(pri) {
   const n = pri==='high'?3:pri==='medium'?2:pri==='low'?1:0;
@@ -1402,7 +1468,7 @@ function cardHTML(c) {
     </div>
     <div class="card-title">${c.title}</div>
     ${nextActionHtml}
-    ${c.note?`<div class="card-note">${renderNote(c.note)}</div>`:''}
+    ${c.note?`<div class="card-note">${renderNote(c.note,c.id)}</div>`:''}
     <div class="card-footer">${linkHtml}${dueHtml}${ageHtml}<div class="card-pri" title="${c.priority}">${priDots(c.priority)}</div></div>
   </div>`;
 }
@@ -1502,7 +1568,7 @@ function openCardModal(id){
   document.getElementById('c-next-action').value=c?c.nextAction:'';
   document.getElementById('c-note').value=c?c.note:'';
   populateFnSelect(c?c.fn:(activeFn!=='all'?activeFn:(fnOrder[0]||'')));
-  document.getElementById('c-col').value=c?c.col:'now';
+  document.getElementById('c-col').value=c?c.col:'inbox';
   document.getElementById('c-priority').value=c?c.priority:'medium';
   document.getElementById('c-link').value=c?c.link:'';
   document.getElementById('c-due').value=c?c.due:'';
@@ -1519,6 +1585,48 @@ function openCardModal(id){
 }
 function closeCardModal(){document.getElementById('card-modal').classList.remove('open');}
 document.getElementById('card-modal').addEventListener('keydown',function(e){if((e.metaKey||e.ctrlKey)&&e.key==='Enter'){e.preventDefault();saveCard();}if(e.key==='Escape'){e.preventDefault();closeCardModal();}});
+
+// ── QUICK ADD ──
+document.getElementById('quick-add-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const text = this.value.trim();
+    if (!text) return;
+    const parsed = parseCardLine(text);
+    if (!parsed.title) return;
+    // Resolve owner by name
+    const ownerMatch = owners.find(o => o.name.toLowerCase() === parsed.owner.toLowerCase());
+    // Resolve pillar by name
+    const pillarMatch = pillars.find(p => p.name.toLowerCase() === parsed.pillar.toLowerCase());
+    // Handle new #fn tags
+    if (parsed.fn && !FUNCTIONS[parsed.fn]) {
+      buildFunctionRegistry(
+        fnOrder.map(k => ({ key: k, label: FUNCTIONS[k].label, color: FUNCTIONS[k].color })).concat([{ key: parsed.fn, label: fnAutoLabel(parsed.fn), color: fnHashColor(parsed.fn) }]),
+        cards
+      );
+      injectFunctionCSS();
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    cards.push({
+      id: ++nextCardId,
+      title: parsed.title,
+      note: parsed.note || '',
+      fn: parsed.fn || '',
+      ownerId: ownerMatch ? ownerMatch.id : '',
+      col: 'inbox',
+      priority: parsed.priority || 'medium',
+      link: parsed.link || '',
+      pillarId: pillarMatch ? pillarMatch.id : '',
+      due: parsed.due || '',
+      nextAction: parsed.nextAction || '',
+      movedAt: today
+    });
+    this.value = '';
+    renderAll();
+    scheduleSave();
+  }
+  if (e.key === 'Escape') { this.blur(); }
+});
 function saveCard(){
   const title=document.getElementById('c-title').value.trim();
   if(!title){document.getElementById('c-title').focus();return;}
@@ -2017,7 +2125,7 @@ function parseCardLine(text) {
 }
 
 function parseBoardMd(text) {
-  const result = { pillars: [], owners: [], functions: [], columns: { now: [], next: [], waiting: [], done: [] } };
+  const result = { pillars: [], owners: [], functions: [], columns: { inbox: [], now: [], next: [], waiting: [], done: [] } };
   let section = null, colKey = null, currentCard = null;
   for (const rawLine of text.split('\n')) {
     const line = rawLine.trimEnd();
@@ -2027,6 +2135,7 @@ function parseBoardMd(text) {
       if (heading === 'pillars') { section = 'pillars'; }
       else if (heading === 'team') { section = 'team'; }
       else if (heading === 'functions') { section = 'functions'; }
+      else if (heading === 'inbox') { section = 'cards'; colKey = 'inbox'; }
       else if (heading === 'now') { section = 'cards'; colKey = 'now'; }
       else if (heading === 'next up' || heading === 'next') { section = 'cards'; colKey = 'next'; }
       else if (heading === 'waiting') { section = 'cards'; colKey = 'waiting'; }
@@ -2103,7 +2212,7 @@ function serializeBoardMd(data) {
     lines.push('- ' + f.key + ' | ' + f.label + ' | ' + (f.color || '#8A8A88'));
   });
   lines.push('');
-  const colHeadings = [['now','Now'],['next','Next Up'],['waiting','Waiting'],['done','Done']];
+  const colHeadings = [['inbox','Inbox'],['now','Now'],['next','Next Up'],['waiting','Waiting'],['done','Done']];
   const columns = data.columns || {};
   colHeadings.forEach(([key, title]) => {
     lines.push('## ' + title);
@@ -2123,7 +2232,7 @@ function buildBoardData() {
   const boardPillars = pillars.map(p => ({icon:p.icon, name:p.name, color:p.color, desc:p.desc}));
   const boardOwners = owners.map(o => ({name:o.name, initials:o.initials, color:o.color}));
   const columns = {};
-  ['now','next','waiting','done'].forEach(col => {
+  ['inbox','now','next','waiting','done'].forEach(col => {
     columns[col] = cards.filter(c => c.col === col).map(c => ({
       title: c.title, priority: c.priority,
       owner: ownerMap[c.ownerId] || '', fn: c.fn || '',
@@ -2193,7 +2302,7 @@ function loadFromLocalStorage() {
     } catch(e) { console.warn('Failed to parse standalone data:', e); }
   }
   // Empty board
-  applyBoardData({ pillars: [], owners: [], columns: { now: [], next: [], waiting: [], done: [] } }, 0);
+  applyBoardData({ pillars: [], owners: [], columns: { inbox: [], now: [], next: [], waiting: [], done: [] } }, 0);
   return false;
 }
 
@@ -2256,7 +2365,7 @@ function applyBoardData(board, mtime) {
   // Flatten columns to cards
   cards = [];
   let cardId = 0;
-  ['now','next','waiting','done'].forEach(col => {
+  ['inbox','now','next','waiting','done'].forEach(col => {
     (board.columns[col] || []).forEach(c => {
       cards.push({
         id: ++cardId, title: c.title || '', note: c.note || '',
@@ -2513,6 +2622,20 @@ function initMobileColumnDots() {
     });
   }, { passive: true });
 }
+
+// ── GLOBAL KEYBOARD SHORTCUTS ──
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'n' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    const tag = document.activeElement.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (document.getElementById('card-modal').classList.contains('open')) return;
+    if (document.getElementById('pillar-modal').classList.contains('open')) return;
+    const aiWs = document.getElementById('ai-workspace');
+    if (aiWs && aiWs.classList.contains('open')) return;
+    e.preventDefault();
+    document.getElementById('quick-add-input').focus();
+  }
+});
 
 // ─────────────────────────────────────────
 // INIT
